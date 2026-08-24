@@ -1,0 +1,23 @@
+{
+  "name": "unibooking",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@ant-design-vue/nuxt": "^1.4.6",
+    "@ant-design/icons-vue": "^7.0.1",
+    "@pinia/nuxt": "^1.0.2",
+    "ant-design-vue": "^4.2.6",
+    "axios": "^1.19.0",
+    "nuxt": "^4.5.2",
+    "pinia": "^4.0.3",
+    "vue": "^3.5.41",
+    "vue-router": "^5.2.0"
+  }
+}
