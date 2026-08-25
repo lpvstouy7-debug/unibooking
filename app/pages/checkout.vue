@@ -1,141 +1,121 @@
 <template>
   <div class="checkout-page">
-    <a-row :gutter="[24, 24]">
-      <!-- Left: multi-step checkout flow -->
-      <a-col :xs="24" :md="16">
-        <a-card class="steps-card">
-          <a-steps :current="currentStep" class="steps">
-            <a-step title="ຂໍ້ມູນລູກຄ້າ" />
-            <a-step title="ຊຳລະເງິນ" />
-            <a-step title="ສຳເລັດ" />
-          </a-steps>
+    <a-row :gutter="32">
+      <!-- Left: contact info + payment method -->
+      <a-col :xs="24" :lg="16">
+        <a-card class="section-card" :bordered="false">
+          <h2 class="section-card__title">ຂໍ້ມູນຜູ້ຕິດຕໍ່</h2>
 
-          <!-- Step 1: Customer Info -->
-          <div v-if="currentStep === 0" class="step-content">
-            <a-form layout="vertical" :model="bookingStore.customerInfo">
-              <a-row :gutter="16">
-                <a-col :xs="24" :sm="12">
-                  <a-form-item label="ຊື່">
-                    <a-input v-model:value="bookingStore.customerInfo.firstName" size="large" />
-                  </a-form-item>
-                </a-col>
-                <a-col :xs="24" :sm="12">
-                  <a-form-item label="ນາມສະກຸນ">
-                    <a-input v-model:value="bookingStore.customerInfo.lastName" size="large" />
-                  </a-form-item>
-                </a-col>
-                <a-col :xs="24" :sm="12">
-                  <a-form-item label="ເບີໂທລະສັບ">
-                    <a-input v-model:value="bookingStore.customerInfo.phone" size="large" />
-                  </a-form-item>
-                </a-col>
-                <a-col :xs="24" :sm="12">
-                  <a-form-item label="ອີເມວ">
-                    <a-input v-model:value="bookingStore.customerInfo.email" size="large" />
-                  </a-form-item>
-                </a-col>
-                <a-col :xs="24">
-                  <a-form-item label="ເລກທີ່ໜັງສືເດີນທາງ (Passport No.)">
-                    <a-input v-model:value="bookingStore.customerInfo.passportNo" size="large" />
-                  </a-form-item>
-                </a-col>
-              </a-row>
-            </a-form>
+          <a-form ref="contactFormRef" layout="vertical" :model="bookingStore.customerInfo">
+            <a-row :gutter="16">
+              <a-col :xs="24" :sm="12">
+                <a-form-item
+                  label="ຊື່"
+                  name="firstName"
+                  :rules="[{ required: true, message: 'ກະລຸນາປ້ອນຊື່' }]"
+                >
+                  <a-input v-model:value="bookingStore.customerInfo.firstName" size="large" />
+                </a-form-item>
+              </a-col>
+              <a-col :xs="24" :sm="12">
+                <a-form-item
+                  label="ນາມສະກຸນ"
+                  name="lastName"
+                  :rules="[{ required: true, message: 'ກະລຸນາປ້ອນນາມສະກຸນ' }]"
+                >
+                  <a-input v-model:value="bookingStore.customerInfo.lastName" size="large" />
+                </a-form-item>
+              </a-col>
+              <a-col :xs="24" :sm="12">
+                <a-form-item
+                  label="ອີເມວ"
+                  name="email"
+                  :rules="[{ required: true, type: 'email', message: 'ກະລຸນາປ້ອນອີເມວທີ່ຖືກຕ້ອງ' }]"
+                >
+                  <a-input v-model:value="bookingStore.customerInfo.email" size="large" />
+                </a-form-item>
+              </a-col>
+              <a-col :xs="24" :sm="12">
+                <a-form-item
+                  label="ເບີໂທລະສັບ"
+                  name="phone"
+                  :rules="[{ required: true, message: 'ກະລຸນາປ້ອນເບີໂທລະສັບ' }]"
+                >
+                  <a-input v-model:value="bookingStore.customerInfo.phone" size="large" />
+                </a-form-item>
+              </a-col>
+            </a-row>
+          </a-form>
+        </a-card>
 
-            <div class="step-actions">
-              <a-button
-                type="primary"
-                size="large"
-                :disabled="!canGoToPayment"
-                @click="currentStep = 1"
-              >
-                ຖັດໄປ
-              </a-button>
-            </div>
-          </div>
+        <a-card class="section-card" :bordered="false">
+          <h2 class="section-card__title">ຊ່ອງທາງຊຳລະເງິນ</h2>
 
-          <!-- Step 2: Payment -->
-          <div v-else-if="currentStep === 1" class="step-content">
-            <div class="qr-payment">
-              <div class="qr-payment__placeholder">
-                QR CODE
-              </div>
-              <p class="qr-payment__hint">
-                ສະແກນ QR Code ຜ່ານແອັບທະນາຄານຂອງທ່ານເພື່ອຊຳລະເງິນ
-              </p>
-              <p class="qr-payment__amount">
-                ຍອດຊຳລະ: <strong>{{ formatPrice(bookingStore.totalPrice) }} ກີບ</strong>
-              </p>
-            </div>
-
-            <a-alert
-              v-if="bookingStore.error"
-              type="error"
-              show-icon
-              :message="bookingStore.error"
-              class="payment-error"
-            />
-
-            <div class="step-actions">
-              <a-button size="large" @click="currentStep = 0">
-                ກັບຄືນ
-              </a-button>
-              <a-button
-                type="primary"
-                size="large"
-                :loading="bookingStore.isLoading"
-                @click="handleConfirmPayment"
-              >
-                ຢືນຢັນການຊຳລະເງິນ
-              </a-button>
-            </div>
-          </div>
-
-          <!-- Step 3: Success -->
-          <div v-else class="step-content">
-            <a-result
-              status="success"
-              title="ການຈອງສຳເລັດແລ້ວ!"
-              :sub-title="`ລະຫັດການຈອງຂອງທ່ານ: ${bookingStore.bookingReference}`"
-            >
-              <template #extra>
-                <a-button type="primary" size="large" @click="handleBackHome">
-                  ກັບໜ້າຫຼັກ
-                </a-button>
-              </template>
-            </a-result>
-          </div>
+          <a-radio-group v-model:value="paymentMethod" class="payment-options">
+            <a-radio v-for="option in paymentOptions" :key="option.value" :value="option.value" class="payment-option">
+              <component :is="option.icon" class="payment-option__icon" />
+              <span class="payment-option__label">{{ option.label }}</span>
+            </a-radio>
+          </a-radio-group>
         </a-card>
       </a-col>
 
-      <!-- Right: sticky order summary -->
-      <a-col :xs="24" :md="8">
-        <a-card title="ສະຫຼຸບການຈອງ" class="summary-card">
-          <template v-if="bookingStore.selectedService">
-            <h3 class="summary-service">{{ bookingStore.selectedService.name }}</h3>
+      <!-- Right: sticky booking summary -->
+      <a-col :xs="24" :lg="8">
+        <a-card class="summary-card" :bordered="false">
+          <template v-if="!bookingStore.selectedService">
+            <a-empty description="ຍັງບໍ່ໄດ້ເລືອກບໍລິການ">
+              <a-button type="primary" @click="router.push('/hotels')">
+                ກັບໄປໜ້າໂຮງແຮມ
+              </a-button>
+            </a-empty>
+          </template>
 
-            <a-descriptions :column="1" size="small" class="summary-details">
-              <a-descriptions-item label="ວັນທີເຂົ້າພັກ">
-                {{ formatDate(bookingStore.bookingData.startDate) }}
-              </a-descriptions-item>
-              <a-descriptions-item label="ວັນທີອອກ">
-                {{ formatDate(bookingStore.bookingData.endDate) }}
-              </a-descriptions-item>
-              <a-descriptions-item :label="bookingStore.isTransportBooking ? 'ຈຳນວນບ່ອນນັ່ງ' : 'ຈຳນວນຄົນ'">
-                {{ bookingStore.isTransportBooking ? bookingStore.bookingData.seats : bookingStore.bookingData.guests }}
-                {{ bookingStore.isTransportBooking ? 'ບ່ອນນັ່ງ' : 'ຄົນ' }}
-              </a-descriptions-item>
-            </a-descriptions>
+          <template v-else>
+            <img
+              v-if="bookingStore.selectedService.image"
+              :src="bookingStore.selectedService.image"
+              :alt="bookingStore.selectedService.name"
+              class="summary-card__image"
+            />
+
+            <h3 class="summary-card__name">{{ bookingStore.selectedService.name }}</h3>
+            <a-rate
+              v-if="bookingStore.selectedService.stars"
+              disabled
+              :value="bookingStore.selectedService.stars"
+              class="summary-card__rate"
+            />
 
             <a-divider />
 
-            <div class="summary-total">
-              <span>ລວມທັງໝົດ</span>
-              <span class="summary-total__value">{{ formatPrice(bookingStore.totalPrice) }} ກີບ</span>
+            <div class="price-row">
+              <span>ລາຄາພື້ນຖານ</span>
+              <span>₭ {{ formatPrice(basePrice) }}</span>
             </div>
-          </template>
+            <div class="price-row">
+              <span>ພາສີ ແລະ ຄ່າທຳນຽມ (10%)</span>
+              <span>₭ {{ formatPrice(taxAmount) }}</span>
+            </div>
 
-          <a-empty v-else description="ຍັງບໍ່ໄດ້ເລືອກບໍລິການ" />
+            <a-divider />
+
+            <div class="price-row price-row--total">
+              <span>ລາຄາລວມ</span>
+              <span class="price-row__total-value">₭ {{ formatPrice(totalWithTax) }}</span>
+            </div>
+
+            <a-button
+              type="primary"
+              size="large"
+              block
+              class="confirm-btn"
+              :loading="isSubmitting"
+              @click="handleConfirmBooking"
+            >
+              ຢືນຢັນການຈອງ
+            </a-button>
+          </template>
         </a-card>
       </a-col>
     </a-row>
@@ -143,128 +123,187 @@
 </template>
 
 <script setup>
-// dayjs ships as a dependency of ant-design-vue but isn't auto-imported
-import dayjs from 'dayjs'
+import { ref, computed } from 'vue'
+import { Modal } from 'ant-design-vue'
+import { QrcodeOutlined, CreditCardOutlined, HomeOutlined } from '@ant-design/icons-vue'
+import { useBookingStore } from '~/stores/booking'
 
-// Nuxt/Pinia auto-imports: ref, computed, useBookingStore, navigateTo
 const bookingStore = useBookingStore()
+const router = useRouter()
 
-const currentStep = ref(0)
+const contactFormRef = ref(null)
+const isSubmitting = ref(false)
 
-// Require the fields isBookingReady checks before letting the user move to payment
-const canGoToPayment = computed(() => bookingStore.isBookingReady)
+const paymentOptions = [
+  { value: 'qr', label: 'BCEL One / QR Pay', icon: QrcodeOutlined },
+  { value: 'card', label: 'Credit/Debit Card', icon: CreditCardOutlined },
+  { value: 'hotel', label: 'Pay at Hotel', icon: HomeOutlined }
+]
+const paymentMethod = ref('qr')
+
+const basePrice = computed(() => bookingStore.totalPrice)
+const taxAmount = computed(() => Math.round(basePrice.value * 0.1))
+const totalWithTax = computed(() => basePrice.value + taxAmount.value)
 
 function formatPrice(value) {
   return new Intl.NumberFormat('lo-LA').format(value ?? 0)
 }
 
-function formatDate(value) {
-  if (!value) return '-'
-  return dayjs(value).format('DD/MM/YYYY')
-}
-
-async function handleConfirmPayment() {
+async function handleConfirmBooking() {
   try {
-    await bookingStore.createBooking()
-    currentStep.value = 2
+    await contactFormRef.value?.validate()
   } catch {
-    // bookingStore.error already holds the Lao error message; shown via a-alert above
+    return
   }
-}
 
-function handleBackHome() {
-  bookingStore.resetBooking()
-  navigateTo('/')
+  isSubmitting.value = true
+
+  setTimeout(() => {
+    isSubmitting.value = false
+
+    Modal.success({
+      title: 'ການຈອງສຳເລັດແລ້ວ!',
+      content: 'ຂອບໃຈທີ່ໃຊ້ບໍລິການ UniBooking. ພວກເຮົາໄດ້ສົ່ງລາຍລະອຽດການຈອງໄປທາງອີເມວຂອງທ່ານແລ້ວ.',
+      okText: 'ຕົກລົງ',
+      onOk: () => {
+        bookingStore.selectedService = null
+        router.push('/')
+      }
+    })
+  }, 1500)
 }
 </script>
 
 <style scoped>
 .checkout-page {
-  max-width: 1200px;
-  margin: 0 auto;
+  background: #f8fafc;
+  padding: 40px 24px;
+  border-radius: 16px;
 }
 
-.steps {
-  margin-bottom: 32px;
+.section-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  margin-bottom: 24px;
 }
 
-.step-content {
-  min-height: 280px;
+.section-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 20px;
 }
 
-.step-actions {
+/* Payment method: large selectable blocks instead of plain radios */
+.payment-options {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: 12px;
-  margin-top: 24px;
+  width: 100%;
 }
 
-/* Payment */
-.qr-payment {
-  text-align: center;
-  padding: 32px 16px;
-}
-
-.qr-payment__placeholder {
-  width: 200px;
-  height: 200px;
-  margin: 0 auto 16px;
+.payment-option {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: #f0f9ff;
-  border: 2px dashed #0ea5e9;
-  border-radius: 8px;
-  color: #0284c7;
-  font-weight: 700;
-  letter-spacing: 1px;
+  width: 100%;
+  margin: 0 !important;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.qr-payment__hint {
-  color: #64748b;
-  margin-bottom: 8px;
+.payment-option:hover {
+  border-color: #1e40af;
 }
 
-.qr-payment__amount {
-  font-size: 16px;
-  color: #0c4a6e;
+.payment-option :deep(.ant-radio) {
+  order: -1;
 }
 
-.payment-error {
+.payment-option :deep(span:not(.ant-radio)) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.payment-option.ant-radio-wrapper-checked {
+  border-color: #1e40af;
+  background: rgba(30, 64, 175, 0.04);
+}
+
+.payment-option__icon {
+  font-size: 22px;
+  color: #1e40af;
+  margin: 0 12px;
+}
+
+.payment-option__label {
+  font-size: 15px;
+  font-weight: 500;
+  color: #0f172a;
+}
+
+/* Summary */
+.summary-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  position: sticky;
+  top: 100px;
+}
+
+.summary-card__image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 12px;
   margin-bottom: 16px;
 }
 
-/* Order summary */
-.summary-card {
-  position: sticky;
-  top: 24px;
+.summary-card__name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
 }
 
-.summary-service {
-  margin-bottom: 12px;
-  color: #0c4a6e;
+.summary-card__rate {
+  font-size: 14px;
 }
 
-.summary-details {
-  margin-bottom: 8px;
-}
-
-.summary-total {
+.price-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.price-row--total {
   font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 20px;
 }
 
-.summary-total__value {
-  color: #0284c7;
+.price-row__total-value {
+  font-size: 22px;
+  color: #1e40af;
 }
 
-/* Stack columns on mobile: sticky summary would otherwise pin below the fold */
-@media (max-width: 767px) {
+.confirm-btn {
+  margin-top: 4px;
+}
+
+@media (max-width: 991px) {
   .summary-card {
     position: static;
+  }
+}
+
+@media (max-width: 767px) {
+  .checkout-page {
+    padding: 24px 16px;
   }
 }
 </style>

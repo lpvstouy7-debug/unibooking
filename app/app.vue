@@ -15,12 +15,18 @@
 </template>
 
 <script setup>
-const loadingIndicatorColor = 'repeating-linear-gradient(to right, #0ea5e9 0%, #38bdf8 50%, #0284c7 100%)'
+const loadingIndicatorColor = 'repeating-linear-gradient(to right, #1e40af 0%, #3b5bdb 50%, #0f3460 100%)'
 
 const themeConfig = {
   token: {
-    colorPrimary: '#0ea5e9',
+    colorPrimary: '#1e40af',
     borderRadius: 8
   }
 }
 </script>
+
+<style>
+body, html, #__nuxt, .ant-btn, .ant-input, .ant-menu, .ant-typography, * {
+  font-family: 'Phetsarath OT', sans-serif !important;
+}
+</style>

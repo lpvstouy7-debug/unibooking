@@ -1,12 +1,16 @@
 import { defineStore } from 'pinia';
-import { API_LOGIN } from '../utils/api';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
+function readStoredToken() {
+  if (!process.client) return null;
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
+    token: readStoredToken(),
     user: null,
-    token: null,
     isLoading: false,
     error: null
   }),
@@ -16,54 +20,68 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    // ເອີ້ນ API ລັອກອິນແທ້ ຄາດຫວັງ response: { success: true, data: { token, user } }
-    async login(email, password) {
+    // ຈຳລອງການເອີ້ນ API ລັອກອິນ (ໃຫ້ປ່ຽນເປັນ $unibookingApi.post('/auth/login') ເມື່ອມີ Backend ແທ້)
+    login(email, password) {
       this.isLoading = true;
       this.error = null;
 
-      try {
-        const { $unibookingApi } = useNuxtApp();
-        const response = await $unibookingApi.post(API_LOGIN, { email, password });
+      return new Promise((resolve, reject) => {
+        setTimeout(async () => {
+          try {
+            if (!email || !password) {
+              throw new Error('ກະລຸນາປ້ອນອີເມວ ແລະ ລະຫັດຜ່ານ');
+            }
 
-        // ບາງ API ຫໍ່ຂໍ້ມູນໄວ້ໃນ dataResponse, ບາງອັນໃນ data, ບາງອັນສົ່ງມາກົງໆ
-        const result = response.data?.dataResponse || response.data?.data || response.data || {};
-        const { token, user } = result;
+            const token = 'mock-jwt-token-xyz';
 
-        this.token = token;
-        this.user = user;
+            this.token = token;
 
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(TOKEN_STORAGE_KEY, token);
-        }
+            if (process.client) {
+              localStorage.setItem(TOKEN_STORAGE_KEY, token);
+            }
 
-        return user;
-      } catch (err) {
-        this.error = 'ເຂົ້າສູ່ລະບົບບໍ່ສຳເລັດ ກະລຸນາລອງໃໝ່';
-        throw err;
-      } finally {
-        this.isLoading = false;
-      }
+            await this.fetchProfile();
+
+            resolve(this.user);
+          } catch (err) {
+            this.error = err.message || 'ເຂົ້າສູ່ລະບົບບໍ່ສຳເລັດ ກະລຸນາລອງໃໝ່';
+            reject(err);
+          } finally {
+            this.isLoading = false;
+          }
+        }, 1500);
+      });
+    },
+
+    // ຈຳລອງການເອີ້ນ GET /profile ດ້ວຍ Token ທີ່ໄດ້ຈາກ login/initAuth
+    fetchProfile() {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          this.user = {
+            name: 'John Doe',
+            email: 'john.doe@unibooking.la'
+          };
+          resolve(this.user);
+        }, 500);
+      });
     },
 
     logout() {
       this.user = null;
       this.token = null;
 
-      if (typeof window !== 'undefined') {
+      if (process.client) {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
       }
+
+      navigateTo('/login');
     },
 
-    // ຮຽກໃຊ້ຕອນແອັບໂຫລດ ເພື່ອກູ້ຄືນ Session ຈາກ Token ທີ່ບັນທຶກໄວ້
+    // ຮຽກໃຊ້ຕອນແອັບໂຫລດ ເພື່ອກູ້ຄືນ Session (state.token ຖືກຕັ້ງຄ່າແລ້ວຕັ້ງແຕ່ state() ຖ້າມີ Token ໃນ localStorage)
     initAuth() {
-      if (typeof window === 'undefined') return;
-
-      const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-      if (!token) return;
-
-      this.token = token;
-      // Mock: ບໍ່ມີ Backend ໃຫ້ດຶງຂໍ້ມູນຜູ້ໃຊ້ແທ້ ຈຶ່ງໃຊ້ຄ່າຈຳລອງໄປກ່ອນ
-      this.user = { name: 'John Doe', email: 'john.doe@unibooking.la' };
+      if (this.token && !this.user) {
+        this.fetchProfile();
+      }
     }
   }
 });
