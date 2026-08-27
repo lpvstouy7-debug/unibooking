@@ -1,30 +1,11 @@
 <template>
   <a-layout class="site-layout">
-    <!-- Top bar: slim dark strip above the main header, holds the language switcher -->
-    <div class="top-bar">
-      <div class="container top-bar__inner">
-        <ClientOnly>
-          <a-dropdown placement="bottomRight">
-            <a class="lang-switcher" @click.prevent>
-              <GlobalOutlined />
-              <span class="lang-switcher__label">{{ currentLang }}</span>
-            </a>
-            <template #overlay>
-              <a-menu @click="({ key }) => handleLangChange(key)">
-                <a-menu-item key="EN">EN</a-menu-item>
-                <a-menu-item key="Lao">Lao</a-menu-item>
-                <a-menu-item key="Thai">Thai</a-menu-item>
-                <a-menu-item key="Cha">Cha</a-menu-item>
-                <a-menu-item key="Vt">Vt</a-menu-item>
-              </a-menu>
-            </template>
-          </a-dropdown>
-        </ClientOnly>
-      </div>
-    </div>
-
-    <!-- Header: pure white bg, logo | centered nav | user actions -->
-    <a-layout-header class="site-header">
+    <!-- Header: single green navbar, logo | centered nav | lang + user actions.
+         Pages that render their own integrated hero navbar (e.g. the homepage
+         floating hero card) set route.meta.hideSiteHeader — this bar then stays
+         hidden on desktop (where the hero navbar takes over) but keeps showing
+         on mobile, since it's still the only way to reach the hamburger drawer there. -->
+    <a-layout-header class="site-header" :class="{ 'site-header--hero-mode': route.meta.hideSiteHeader }">
       <div class="container site-header__inner">
         <NuxtLink to="/" class="logo">UniBooking</NuxtLink>
 
@@ -54,9 +35,26 @@
           </template>
         </ClientOnly>
 
-        <!-- Right-hand actions: user dropdown or login link (desktop only) + hamburger (mobile only) -->
+        <!-- Right-hand actions: lang switcher + user dropdown/login (desktop only) grouped
+             together and pushed flush right, plus the hamburger (mobile only) -->
         <div class="site-header__actions">
           <ClientOnly>
+            <a-dropdown placement="bottomRight" class="user-menu-wrapper--desktop">
+              <a class="lang-switcher" @click.prevent>
+                <GlobalOutlined />
+                <span class="lang-switcher__label">{{ currentLang }}</span>
+              </a>
+              <template #overlay>
+                <a-menu @click="({ key }) => handleLangChange(key)">
+                  <a-menu-item key="EN">EN</a-menu-item>
+                  <a-menu-item key="Lao">Lao</a-menu-item>
+                  <a-menu-item key="Thai">Thai</a-menu-item>
+                  <a-menu-item key="Cha">Cha</a-menu-item>
+                  <a-menu-item key="Vt">Vt</a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
+
             <a-dropdown v-if="authStore.isAuthenticated" placement="bottomRight" class="user-menu-wrapper--desktop">
               <a class="user-menu" @click.prevent>
                 <a-avatar>{{ userInitial }}</a-avatar>
@@ -93,6 +91,25 @@
       width="260"
     >
       <ClientOnly>
+        <!-- Lang switcher lives in the desktop navbar's right-hand group (see header
+             above); repeated here since it's hidden on mobile along with the rest of
+             that group, and the drawer is the only nav surface left below 768px. -->
+        <a-dropdown placement="bottomLeft" class="lang-switcher-drawer">
+          <a class="lang-switcher" @click.prevent>
+            <GlobalOutlined />
+            <span class="lang-switcher__label">{{ currentLang }}</span>
+          </a>
+          <template #overlay>
+            <a-menu @click="({ key }) => handleLangChange(key)">
+              <a-menu-item key="EN">EN</a-menu-item>
+              <a-menu-item key="Lao">Lao</a-menu-item>
+              <a-menu-item key="Thai">Thai</a-menu-item>
+              <a-menu-item key="Cha">Cha</a-menu-item>
+              <a-menu-item key="Vt">Vt</a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
+
         <a-menu mode="vertical" :selectable="false" @click="handleDrawerMenuClick">
           <a-menu-item key="home">
             <NuxtLink to="/">Home</NuxtLink>
@@ -127,15 +144,83 @@
 
     <!-- Footer -->
     <a-layout-footer class="site-footer">
-      &copy; {{ new Date().getFullYear() }} UniBooking Travel. All rights reserved.
+      <div class="footer__container footer__top">
+        <div class="footer__col footer__col--about">
+          <NuxtLink to="/" class="footer__logo">UniBooking</NuxtLink>
+          <p class="footer__about-text">
+            ແພລັດຟອມການຈອງທີ່ພັກ ແລະ ການເດີນທາງແບບຄົບວົງຈອນ ສຳລັບການທ່ອງທ່ຽວທົ່ວປະເທດລາວ
+            ດ້ວຍມາດຕະຖານລະດັບພຣີເມ້ຍມ.
+          </p>
+          <div class="footer__social">
+            <a href="#" class="footer__social-icon" aria-label="Facebook"><FacebookFilled /></a>
+            <a href="#" class="footer__social-icon" aria-label="Youtube"><YoutubeFilled /></a>
+          </div>
+        </div>
+
+        <div class="footer__col">
+          <h4 class="footer__heading">Reservation</h4>
+          <ul class="footer__links">
+            <li><NuxtLink to="/hotels">ຈອງໂຮງແຮມ</NuxtLink></li>
+            <li><NuxtLink to="/transport">ຈອງປີ້ຍົນ</NuxtLink></li>
+            <li><NuxtLink to="/transport">ລົດເຊົ່າ ແລະ ລົດຮັບສົ່ງ</NuxtLink></li>
+            <li><NuxtLink to="/">ແພັກເກດທົວ</NuxtLink></li>
+          </ul>
+        </div>
+
+        <div class="footer__col">
+          <h4 class="footer__heading">Partnerships</h4>
+          <ul class="footer__links">
+            <li><a href="#">ກາຍເປັນຄູ່ຮ່ວມທຸລະກິດ</a></li>
+            <li><a href="#">ຮ່ວມມືທຸລະກິດ</a></li>
+            <li><a href="#">ໂຄງການແນະນຳລູກຄ້າ</a></li>
+            <li><a href="#">API ສຳລັບນັກພັດທະນາ</a></li>
+          </ul>
+        </div>
+
+        <div class="footer__col">
+          <h4 class="footer__heading">Manage Booking</h4>
+          <ul class="footer__links">
+            <li><a href="#">ກວດສອບການຈອງ</a></li>
+            <li><a href="#">ຍົກເລີກ / ປ່ຽນແປງ</a></li>
+            <li><a href="#">ຄຳຖາມທີ່ພົບເລື້ອຍ</a></li>
+            <li><a href="#">ຕິດຕໍ່ພວກເຮົາ</a></li>
+          </ul>
+        </div>
+
+        <div class="footer__col">
+          <h4 class="footer__heading">Supported By</h4>
+          <ul class="footer__links footer__links--badges">
+            <li>Travel Partner Network</li>
+            <li>Regional Tourism Alliance</li>
+            <li>Certified Booking Platform</li>
+            <li>Local Tour Operators Guild</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer__container footer__bottom">
+        <div class="footer__payments">
+          <span class="footer__payment-badge">VISA</span>
+          <span class="footer__payment-badge">Mastercard</span>
+          <span class="footer__payment-badge">Alipay</span>
+          <span class="footer__payment-badge">WeChat Pay</span>
+          <span class="footer__payment-badge">UnionPay</span>
+        </div>
+        <p class="footer__copyright">
+          &copy; {{ new Date().getFullYear() }} UniBooking Travel. All rights reserved.
+        </p>
+      </div>
     </a-layout-footer>
   </a-layout>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { MenuOutlined, GlobalOutlined } from '@ant-design/icons-vue'
+import { useRoute } from 'vue-router'
+import { MenuOutlined, GlobalOutlined, FacebookFilled, YoutubeFilled } from '@ant-design/icons-vue'
 import { useAuthStore } from '~/stores/auth'
+
+const route = useRoute()
 
 // Session restore happens in app/plugins/auth.client.js, before mount
 const authStore = useAuthStore()
@@ -167,6 +252,8 @@ function handleDrawerMenuClick({ key }) {
 
 <style scoped>
 .site-layout {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
 
@@ -178,20 +265,6 @@ function handleDrawerMenuClick({ key }) {
   padding: 0 24px;
   display: flex;
   justify-content: space-between;
-}
-
-/* Top bar */
-.top-bar {
-  width: 100%;
-  background: #0f172a;
-}
-
-.top-bar__inner {
-  height: 36px;
-  align-items: center;
-  /* Only one item (lang switcher) lives here, so keep it flush right rather than
-     letting the shared .container's space-between push it to the start */
-  justify-content: flex-end;
 }
 
 .lang-switcher {
@@ -207,7 +280,23 @@ function handleDrawerMenuClick({ key }) {
   color: #ffffff;
 }
 
-/* Header: premium dark green, seamless with the hero below (no border/shadow separating them) */
+/* Drawer's copy of the lang switcher (mobile only): sits above the vertical nav
+   menu with its own breathing room since a-drawer has no header actions slot */
+.lang-switcher-drawer {
+  display: block;
+  margin: 0 0 16px;
+}
+
+.lang-switcher-drawer .lang-switcher {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.lang-switcher-drawer .lang-switcher:hover {
+  color: rgba(0, 0, 0, 0.88);
+}
+
+/* Header: premium dark green, single full-width flexbox bar — logo far left,
+   nav centered, lang + login/user grouped far right (see .site-header__actions) */
 .site-header {
   width: 100%;
   background: #064e3b;
@@ -215,8 +304,19 @@ function handleDrawerMenuClick({ key }) {
   line-height: 64px;
 }
 
+/* Pages with their own integrated hero navbar (see site-header--hero-mode
+   binding above) hide this bar on desktop, where the hero navbar takes over;
+   it stays visible on mobile since it's still the only hamburger-drawer entry point. */
+@media (min-width: 768px) {
+  .site-header--hero-mode {
+    display: none;
+  }
+}
+
 .site-header__inner {
   height: 100%;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
@@ -314,18 +414,169 @@ function handleDrawerMenuClick({ key }) {
 }
 
 /* Content: no horizontal padding here by design (full-bleed pages own their own
-   background width); pages that need a boxed look supply their own max-width wrapper. */
+   background width); pages that need a boxed look supply their own max-width wrapper.
+   flex: 1 makes it absorb all remaining height so the footer below always sits at the
+   bottom of the viewport on short pages, regardless of the footer's own (now variable) height. */
 .site-content {
-  min-height: calc(100vh - 64px - 70px - 36px);
+  flex: 1 0 auto;
   background: #f0f9ff;
 }
 
-/* Footer */
+/* ============================================================
+   Footer: 5-column luxury layout on the dark green/gold theme
+   ============================================================ */
 .site-footer {
-  text-align: center;
-  background: #f0f9ff;
-  color: #64748b;
-  padding: 24px;
-  height: 70px;
+  flex-shrink: 0;
+  background: #1a3c28;
+  color: rgba(251, 249, 242, 0.7);
+  padding: 64px 0 0;
+  height: auto;
+  line-height: 1.6;
+}
+
+.footer__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  width: 100%;
+}
+
+.footer__top {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(4, 1fr);
+  gap: 32px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid rgba(251, 249, 242, 0.12);
+  text-align: left;
+}
+
+.footer__logo {
+  display: inline-block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.footer__about-text {
+  font-size: 13px;
+  line-height: 1.8;
+  color: rgba(251, 249, 242, 0.65);
+  max-width: 280px;
+  margin-bottom: 20px;
+}
+
+.footer__social {
+  display: flex;
+  gap: 10px;
+}
+
+.footer__social-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(251, 249, 242, 0.25);
+  color: #fbf9f2;
+  transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.footer__social-icon:hover {
+  background: #c5a059;
+  border-color: #c5a059;
+  color: #1a3c28;
+}
+
+.footer__heading {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin-bottom: 20px;
+}
+
+.footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer__links a {
+  font-size: 13px;
+  color: rgba(251, 249, 242, 0.65);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.footer__links a:hover {
+  color: #c5a059;
+}
+
+.footer__links--badges li {
+  font-size: 12px;
+  color: rgba(251, 249, 242, 0.5);
+}
+
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 0;
+}
+
+.footer__payments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.footer__payment-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: rgba(251, 249, 242, 0.08);
+  border: 1px solid rgba(251, 249, 242, 0.15);
+  color: #fbf9f2;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.footer__copyright {
+  font-size: 12px;
+  color: rgba(251, 249, 242, 0.5);
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .footer__top {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .footer__col--about {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer__top {
+    grid-template-columns: 1fr;
+  }
+
+  .footer__bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>
