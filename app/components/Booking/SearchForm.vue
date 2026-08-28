@@ -102,16 +102,82 @@ function handleTransportSearch() {
 </script>
 
 <style scoped>
+/* "Blue Light" accent — electric cyan on black. See index.vue's
+   .services-section block for the matching service-card treatment. */
 .search-form {
   border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(2, 132, 199, 0.15);
+}
+
+.search-form :deep(.ant-tabs-tab) {
+  color: rgba(34, 211, 238, 0.55);
+}
+
+.search-form :deep(.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  color: #22d3ee !important;
+}
+
+/* Active navigation tab underline */
+.search-form :deep(.ant-tabs-ink-bar) {
+  background: #22d3ee;
+}
+
+.search-form :deep(.ant-input),
+.search-form :deep(.ant-select-selector),
+.search-form :deep(.ant-picker) {
+  background: #1a2331;
+  border-color: rgba(34, 211, 238, 0.4);
+  color: #22d3ee;
+}
+
+.search-form :deep(.ant-input:hover),
+.search-form :deep(.ant-select-selector:hover),
+.search-form :deep(.ant-picker:hover) {
+  border-color: #22d3ee;
+}
+
+.search-form :deep(.ant-input-focused),
+.search-form :deep(.ant-input:focus),
+.search-form :deep(.ant-select-focused .ant-select-selector),
+.search-form :deep(.ant-picker-focused) {
+  border-color: #22d3ee !important;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2) !important;
+}
+
+.search-form :deep(.ant-input::placeholder),
+.search-form :deep(.ant-picker-input input::placeholder) {
+  color: rgba(34, 211, 238, 0.45);
+}
+
+.search-form :deep(.ant-select-selection-item),
+.search-form :deep(.ant-picker-input input) {
+  color: #22d3ee;
+}
+
+.search-form :deep(.ant-picker-suffix),
+.search-form :deep(.ant-select-arrow) {
+  color: rgba(34, 211, 238, 0.6);
+}
+
+/* Primary "ຄົ້ນຫາ" search button */
+.search-form :deep(.ant-btn-primary) {
+  background: #22d3ee !important;
+  border-color: #22d3ee !important;
+  color: #0a0a0a !important;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+.search-form :deep(.ant-btn-primary:hover) {
+  background: #67e8f9 !important;
+  border-color: #67e8f9 !important;
+  color: #0a0a0a !important;
 }
 
 .field-label {
   display: block;
   margin-bottom: 4px;
   font-size: 13px;
-  color: #475569;
+  color: #22d3ee;
   font-weight: 500;
 }
 </style>

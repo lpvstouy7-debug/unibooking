@@ -56,17 +56,48 @@
         </div>
 
         <div class="hero-carousel" aria-label="Popular destinations">
-          <div ref="heroCarouselTrack" class="hero-carousel__track">
-            <button
-              v-for="slide in heroSlides"
-              :key="slide.title"
-              type="button"
-              class="hero-carousel__slide"
-              :class="{ 'is-active': heroSlide === slide.index }"
-              @click="goToHeroSlide(slide.index)"
-            >
-              <img :src="slide.image" :alt="slide.title">
-            </button>
+          <div class="hero-carousel__inner">
+            <ClientOnly>
+              <Swiper
+                :modules="[EffectCoverflow]"
+                effect="coverflow"
+                :centered-slides="true"
+                slides-per-view="auto"
+                :space-between="14"
+                :coverflow-effect="heroCoverflowEffect"
+                :slide-to-clicked-slide="true"
+                :initial-slide="heroSlide"
+                class="hero-carousel__swiper"
+                @swiper="setHeroSwiper"
+                @slide-change="onHeroSlideChange"
+              >
+                <SwiperSlide
+                  v-for="slide in heroSlides"
+                  :key="slide.title"
+                  class="hero-carousel__slide"
+                  v-slot="{ isActive }"
+                >
+                  <div class="hero-carousel__slide-inner" :class="{ 'is-active': isActive }">
+                    <img :src="slide.image" :alt="slide.title">
+                  </div>
+                </SwiperSlide>
+              </Swiper>
+
+              <!-- Static fallback during SSR / before hydration so the swipeable
+                   library (browser-only) doesn't crash the server render. -->
+              <template #fallback>
+                <div class="hero-carousel__fallback">
+                  <div
+                    v-for="slide in heroSlides"
+                    :key="slide.title"
+                    class="hero-carousel__slide-inner"
+                    :class="{ 'is-active': heroSlide === slide.index }"
+                  >
+                    <img :src="slide.image" :alt="slide.title">
+                  </div>
+                </div>
+              </template>
+            </ClientOnly>
           </div>
         </div>
       </div>
@@ -355,7 +386,11 @@
 </template>
 
 <script setup>
-import { reactive, ref, h, nextTick } from 'vue'
+import { reactive, ref, h } from 'vue'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { EffectCoverflow } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/effect-coverflow'
 import {
   BankOutlined,
   CarOutlined,
@@ -400,21 +435,27 @@ const heroSlides = [
   { index: 6, title: 'ເມືອງງອຍ', subtitle: 'Luang Prabang', image: '/images/Muaengngoy.jpg' }
 ]
 
-const heroCarouselTrack = ref(null)
+const heroSwiper = ref(null)
+const heroCoverflowEffect = { rotate: 0, stretch: 0, depth: 140, modifier: 1.2, slideShadows: false }
+
+function setHeroSwiper(swiper) {
+  heroSwiper.value = swiper
+}
+
+function onHeroSlideChange(swiper) {
+  heroSlide.value = swiper.activeIndex
+}
 
 function goToHeroSlide(index) {
-  heroSlide.value = index
-  nextTick(() => {
-    heroCarouselTrack.value?.children[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-  })
+  heroSwiper.value?.slideTo(index)
 }
 
 function showPreviousHeroSlide() {
-  goToHeroSlide((heroSlide.value - 1 + heroSlides.length) % heroSlides.length)
+  heroSwiper.value?.slidePrev()
 }
 
 function showNextHeroSlide() {
-  goToHeroSlide((heroSlide.value + 1) % heroSlides.length)
+  heroSwiper.value?.slideNext()
 }
 
 const services = [
@@ -669,17 +710,7 @@ function closeVideo() {
 .hero-section {
   width: 100%;
   padding: 0;
-  background: #f0f9ff;
-}
-
-/* Modern sans-serif everywhere inside the hero — beats the site-wide
-   `* { font-family: 'Phetsarath OT' !important }` rule in app.vue (that
-   font's Latin glyphs render serif-ish) purely on selector specificity,
-   since both sides use !important. See index.html's Inter <link>
-   (nuxt.config.ts) for the actual font file. */
-.hero-card,
-.hero-card * {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  background: transparent;
 }
 
 .hero-card {
@@ -694,10 +725,10 @@ function closeVideo() {
   /* Left-side scrim keeps the copy block legible; bottom-side scrim keeps
      the carousel thumbnails legible — both over the same full-bleed photo. */
   background:
-    linear-gradient(100deg, rgba(15, 23, 20, 0.88) 0%, rgba(15, 23, 20, 0.55) 38%, rgba(15, 23, 20, 0.12) 62%, rgba(15, 23, 20, 0) 78%),
-    linear-gradient(to top, rgba(10, 20, 16, 0.85) 0%, rgba(10, 20, 16, 0.4) 26%, rgba(10, 20, 16, 0) 52%),
+    linear-gradient(100deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 38%, rgba(0, 0, 0, 0.15) 62%, rgba(0, 0, 0, 0) 78%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.42) 26%, rgba(0, 0, 0, 0) 52%),
     var(--hero-image) center / cover no-repeat;
-  box-shadow: 0 40px 90px rgba(15, 32, 24, 0.35);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6);
 }
 
 /* Left copy block — strictly left-aligned, pinned to the upper area of the
@@ -743,8 +774,8 @@ function closeVideo() {
   margin-top: 26px;
   padding: 13px 28px;
   border-radius: 100px;
-  background: #1683d8;
-  color: #fff;
+  background: #c5a059;
+  color: #0a0a0a;
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
@@ -752,8 +783,8 @@ function closeVideo() {
 }
 
 .hero-copy__button:hover {
-  background: #0e6eb8;
-  color: #fff;
+  background: #d8bc7b;
+  color: #0a0a0a;
   transform: translateY(-2px);
 }
 
@@ -778,77 +809,92 @@ function closeVideo() {
 }
 
 .hero-copy__nav-btn:hover {
-  background: #1683d8;
-  border-color: #1683d8;
+  background: #c5a059;
+  border-color: #c5a059;
 }
 
-/* Bottom carousel overlay — spans the full width of the card so 6+
-   thumbnails are visible at once, anchored to the bottom edge and well
-   clear of the copy block above so the two never overlap. */
+/* Bottom carousel overlay — a swipeable (Swiper) coverflow strip, centered
+   in the same 1200px column as the search box below the hero card so the
+   two line up on desktop. */
 .hero-carousel {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 5;
-  padding: 0 4% 28px;
+  padding: 0 0 28px;
 }
 
-.hero-carousel__track {
+.hero-carousel__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.hero-carousel__swiper {
+  width: 100%;
+  padding: 10px 0 6px;
+  overflow: visible;
+}
+
+.hero-carousel__fallback {
   display: flex;
+  justify-content: center;
   gap: 14px;
   overflow-x: auto;
-  scroll-snap-type: x proximity;
   scrollbar-width: none;
-  padding-bottom: 4px;
+  padding: 10px 0 6px;
 }
 
-.hero-carousel__track::-webkit-scrollbar {
+.hero-carousel__fallback::-webkit-scrollbar {
   display: none;
 }
 
 .hero-carousel__slide {
   position: relative;
-  flex: 0 0 clamp(120px, 14vw, 168px);
+  width: clamp(120px, 14vw, 168px);
   height: clamp(150px, 20vh, 190px);
-  padding: 0;
-  border: 0;
+}
+
+.hero-carousel__slide-inner {
+  position: relative;
+  width: clamp(120px, 14vw, 168px);
+  height: clamp(150px, 20vh, 190px);
+  flex: 0 0 auto;
   border-radius: 18px;
   overflow: hidden;
-  background: #163d2a;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+  background: #111826;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   opacity: 0.72;
-  scroll-snap-align: start;
   transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.hero-carousel__slide:hover,
-.hero-carousel__slide:focus-visible,
-.hero-carousel__slide.is-active {
+.hero-carousel__slide-inner:hover,
+.hero-carousel__slide-inner.is-active {
   opacity: 1;
   transform: translateY(-6px);
 }
 
-.hero-carousel__slide img {
+.hero-carousel__slide-inner img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.hero-carousel__slide::after {
+.hero-carousel__slide-inner::after {
   content: '';
   position: absolute;
   inset: 55% 0 0;
-  background: linear-gradient(transparent, rgba(9, 31, 20, 0.85));
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
 }
 
-.hero-carousel__slide.is-active::before {
+.hero-carousel__slide-inner.is-active::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
-  border: 2px solid #1683d8;
+  border: 2px solid #c5a059;
   border-radius: 18px;
 }
 
@@ -862,10 +908,10 @@ function closeVideo() {
 }
 
 .search-form-wrapper :deep(.search-form.ant-card) {
-  background: #fff;
-  border: 0;
+  background: #14294f;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(2, 132, 199, 0.15);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 40px rgba(255, 255, 255, 0.12);
 }
 
 /* Transparent navbar: floats over the top of the card. Hidden below 768px —
@@ -954,7 +1000,7 @@ function closeVideo() {
 .hero-navbar__btn:hover {
   background: #c5a059;
   border-color: #c5a059;
-  color: #1a3c28;
+  color: #0a0a0a;
 }
 
 @media (max-width: 767px) {
@@ -977,7 +1023,7 @@ function closeVideo() {
   .hero-card {
     height: auto;
     min-height: 0;
-    background: linear-gradient(rgba(10, 20, 16, 0.6), rgba(10, 20, 16, 0.6)), var(--hero-image) center / cover no-repeat;
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), var(--hero-image) center / cover no-repeat;
     padding-top: 100px;
     padding-bottom: 24px;
   }
@@ -994,14 +1040,14 @@ function closeVideo() {
 
   .hero-carousel {
     position: relative;
-    padding: 0 24px 24px;
+    padding: 0 0 24px;
   }
 }
 
 /* Services grid */
 .services-section {
   width: 100%;
-  background: #f8fafc;
+  background: transparent;
   padding: 80px 0;
 }
 
@@ -1011,9 +1057,12 @@ function closeVideo() {
   margin: 0 auto 48px;
 }
 
+/* "Blue Light" accent block — electric cyan on black. Kept local to this
+   section (see SearchForm.vue for the matching search-bar treatment)
+   rather than swapping the sitewide gold accent used elsewhere. */
 .services-header__badge {
-  color: #1e40af;
-  background: rgba(30, 64, 175, 0.08);
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.12);
   border: none;
   border-radius: 16px;
   padding: 4px 12px;
@@ -1023,30 +1072,35 @@ function closeVideo() {
 .services-header__title {
   font-size: 2rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #22d3ee;
   margin-bottom: 12px;
 }
 
 .services-header__subtitle {
   font-size: 15px;
   line-height: 1.8;
-  color: #64748b;
+  color: rgba(34, 211, 238, 0.65);
 }
 
+/* Dark blue block fill with a soft pale-white glowing edge */
 .service-card {
   height: 100%;
-  background: #ffffff;
+  background: #14294f;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px;
   padding: 32px 24px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 22px rgba(255, 255, 255, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
 .service-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+  background: #1a3566;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6), 0 0 32px rgba(255, 255, 255, 0.22);
 }
 
+/* Unselected (default) icon state — dimmer cyan */
 .service-card__icon {
   display: flex;
   align-items: center;
@@ -1054,23 +1108,31 @@ function closeVideo() {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(30, 64, 175, 0.1);
-  color: #1e40af;
+  background: rgba(34, 211, 238, 0.1);
+  color: rgba(34, 211, 238, 0.75);
   font-size: 24px;
   margin-bottom: 20px;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Active icon state — full-brightness cyan with glow, on card hover */
+.service-card:hover .service-card__icon {
+  background: rgba(34, 211, 238, 0.18);
+  color: #22d3ee;
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.35);
 }
 
 .service-card__title {
   font-size: 18px;
   font-weight: 700;
-  color: #0f172a;
+  color: #22d3ee;
   margin-bottom: 8px;
 }
 
 .service-card__desc {
   font-size: 14px;
   line-height: 1.8;
-  color: #64748b;
+  color: rgba(34, 211, 238, 0.65);
   margin-bottom: 0;
 }
 
@@ -1085,7 +1147,7 @@ function closeVideo() {
   width: 100%;
   padding: 100px 0;
   overflow: hidden;
-  background: #1a3c28;
+  background: transparent;
 }
 
 /* Blurred nature photo backdrop. Scaled up slightly so the blur filter never
@@ -1107,7 +1169,7 @@ function closeVideo() {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(26, 60, 40, 0.9), rgba(15, 32, 24, 0.8));
+  background: linear-gradient(135deg, rgba(10, 26, 51, 0.82), rgba(6, 14, 30, 0.75));
   z-index: 0;
 }
 
@@ -1169,7 +1231,7 @@ function closeVideo() {
   width: 85%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(197, 160, 89, 0.22) 0%, rgba(26, 60, 40, 0.08) 45%, transparent 75%);
+  background: radial-gradient(circle, rgba(197, 160, 89, 0.25) 0%, rgba(0, 0, 0, 0.1) 45%, transparent 75%);
   filter: blur(40px);
   z-index: 0;
   pointer-events: none;
@@ -1339,7 +1401,7 @@ function closeVideo() {
   gap: 8px;
   width: 128px;
   padding: 16px 10px;
-  background: linear-gradient(135deg, rgba(30, 64, 110, 0.6), rgba(15, 32, 55, 0.5));
+  background: linear-gradient(135deg, rgba(20, 41, 79, 0.65), rgba(10, 20, 40, 0.55));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 20px;
@@ -1524,7 +1586,7 @@ function closeVideo() {
   position: relative;
   overflow: hidden;
   width: 100%;
-  background: #f6fcf9;
+  background: transparent;
   padding: 80px 0;
 }
 
@@ -1543,7 +1605,7 @@ function closeVideo() {
   right: 8%;
   width: 260px;
   height: 260px;
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(197, 160, 89, 0.14);
 }
 
 .services-grid-section__shape--two {
@@ -1551,7 +1613,7 @@ function closeVideo() {
   left: 6%;
   width: 220px;
   height: 220px;
-  background: rgba(14, 165, 233, 0.1);
+  background: rgba(255, 255, 255, 0.06);
   transform: rotate(-15deg);
 }
 
@@ -1570,8 +1632,8 @@ function closeVideo() {
   display: inline-block;
   font-size: 13px;
   font-weight: 700;
-  color: #047857;
-  background: rgba(16, 185, 129, 0.12);
+  color: #c5a059;
+  background: rgba(197, 160, 89, 0.12);
   border-radius: 999px;
   padding: 6px 16px;
   margin-bottom: 16px;
@@ -1580,29 +1642,33 @@ function closeVideo() {
 .services-grid-header__title {
   font-size: 2.25rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
   margin-bottom: 12px;
 }
 
 .services-grid-header__subtitle {
   font-size: 15px;
   line-height: 1.8;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.65);
 }
 
+/* Dark blue block fill with a soft pale-white glowing edge */
 .grid-card {
   height: 100%;
-  background: #ffffff;
+  background: #14294f;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 24px;
   padding: 32px 24px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 22px rgba(255, 255, 255, 0.12);
   text-align: center;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
 .grid-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.08);
+  background: #1a3566;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 0 32px rgba(255, 255, 255, 0.22);
 }
 
 .grid-card__icon {
@@ -1623,7 +1689,7 @@ function closeVideo() {
 .grid-card__title {
   font-size: 17px;
   font-weight: 700;
-  color: #0f172a;
+  color: #ffffff;
   margin-top: 16px;
   margin-bottom: 6px;
 }
@@ -1631,7 +1697,7 @@ function closeVideo() {
 .grid-card__desc {
   font-size: 13px;
   line-height: 1.8;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.6);
   margin-bottom: 0;
 }
 
@@ -1696,11 +1762,11 @@ function closeVideo() {
 /* ============================================================
    Luxury OTA sections: value proposition, Best of Laos,
    Top Destinations, Media & Social. Brand palette:
-   dark green #1a3c28, gold #c5a059, ivory #fbf9f2.
+   teal-glow gradient (see app.vue's fixed body background) / #111826, gold #c5a059, white text.
    ============================================================ */
 .value-section {
   width: 100%;
-  background: #fbf9f2;
+  background: transparent;
   padding: 72px 0;
 }
 
@@ -1730,20 +1796,20 @@ function closeVideo() {
 
 .value-card:hover .value-card__icon {
   background: #c5a059;
-  color: #1a3c28;
+  color: #0a0a0a;
 }
 
 .value-card__title {
   font-size: 16px;
   font-weight: 700;
-  color: #1a3c28;
+  color: #ffffff;
   margin-bottom: 8px;
 }
 
 .value-card__desc {
   font-size: 13px;
   line-height: 1.7;
-  color: #8a8577;
+  color: rgba(255, 255, 255, 0.6);
   margin-bottom: 0;
 }
 
@@ -1768,7 +1834,7 @@ function closeVideo() {
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: 0.5px;
-  color: #1a3c28;
+  color: #ffffff;
   margin-bottom: 0;
 }
 
@@ -1776,6 +1842,8 @@ function closeVideo() {
    Best of Laos cards are <NuxtLink>s (anchors), so display:block/color/
    text-decoration are reset here to keep the box + hover behavior identical
    to a plain div. */
+/* Soft gold glow border — keeps photo tiles crisply separated from the
+   dark background so the image itself reads clearly. */
 .luxury-card {
   position: relative;
   display: block;
@@ -1785,13 +1853,15 @@ function closeVideo() {
   min-height: 240px;
   color: inherit;
   text-decoration: none;
-  box-shadow: 0 10px 30px rgba(26, 60, 40, 0.12);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid rgba(197, 160, 89, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 18px rgba(197, 160, 89, 0.25);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .luxury-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 24px 48px rgba(26, 60, 40, 0.22);
+  border-color: rgba(197, 160, 89, 0.85);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7), 0 0 28px rgba(197, 160, 89, 0.4);
 }
 
 .luxury-card img {
@@ -1812,7 +1882,7 @@ function closeVideo() {
   justify-content: flex-end;
   text-align: center;
   padding: 24px 16px;
-  background: linear-gradient(to top, rgba(26, 60, 40, 0.9), transparent 65%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92), transparent 65%);
 }
 
 .luxury-card__title {
@@ -1833,7 +1903,7 @@ function closeVideo() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a3c28, #2e5940);
+  background: linear-gradient(135deg, #111826, #1e2a3a);
 }
 
 .luxury-card__ghost-icon {
@@ -1844,7 +1914,7 @@ function closeVideo() {
 /* Best of Laos: 3-up category strip */
 .best-of-section {
   width: 100%;
-  background: #ffffff;
+  background: transparent;
   padding: 80px 0;
 }
 
@@ -1857,7 +1927,7 @@ function closeVideo() {
 /* Top Destinations: editorial mosaic — first card doubled in both directions */
 .destinations-section {
   width: 100%;
-  background: #fbf9f2;
+  background: transparent;
   padding: 80px 0;
 }
 
@@ -1880,7 +1950,7 @@ function closeVideo() {
 /* Tour Categories: curated category grid with premium image cards */
 .tour-categories-section {
   width: 100%;
-  background: #ffffff;
+  background: transparent;
   padding: 80px 0;
 }
 
@@ -1893,7 +1963,7 @@ function closeVideo() {
   font-size: 2.25rem;
   font-weight: 800;
   letter-spacing: 0.5px;
-  color: #1a3c28;
+  color: #ffffff;
   margin-bottom: 12px;
 }
 
@@ -1911,8 +1981,8 @@ function closeVideo() {
 }
 
 .tour-categories-header__link:hover {
-  color: #1a3c28;
-  border-color: #1a3c28;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 .tour-categories-header__link-icon {
@@ -1940,13 +2010,15 @@ function closeVideo() {
   overflow: hidden;
   color: inherit;
   text-decoration: none;
-  box-shadow: 0 10px 30px rgba(26, 60, 40, 0.12);
+  border: 1px solid rgba(197, 160, 89, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 18px rgba(197, 160, 89, 0.25);
   cursor: pointer;
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .tour-category-card:hover {
-  box-shadow: 0 20px 45px rgba(26, 60, 40, 0.22);
+  border-color: rgba(197, 160, 89, 0.85);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 28px rgba(197, 160, 89, 0.4);
 }
 
 /* Separate layer from the badge so the image scale-up never moves the text */
@@ -1966,7 +2038,7 @@ function closeVideo() {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(to top, rgba(26, 60, 40, 0.5) 0%, rgba(26, 60, 40, 0.05) 45%, transparent 70%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.08) 45%, transparent 70%);
   pointer-events: none;
 }
 
@@ -1977,7 +2049,7 @@ function closeVideo() {
   z-index: 2;
   display: inline-block;
   padding: 8px 16px;
-  background: rgba(26, 60, 40, 0.75);
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(197, 160, 89, 0.5);
@@ -1992,7 +2064,7 @@ function closeVideo() {
 /* Media & social */
 .media-section {
   width: 100%;
-  background: #ffffff;
+  background: transparent;
   padding: 80px 0;
 }
 
@@ -2004,13 +2076,15 @@ function closeVideo() {
 }
 
 /* Mock Facebook page plugin card */
+/* Dark blue block fill with a soft pale-white glowing edge */
 .fb-card {
   display: flex;
   flex-direction: column;
   border-radius: 20px;
   overflow: hidden;
-  background: #fbf9f2;
-  box-shadow: 0 10px 30px rgba(26, 60, 40, 0.1);
+  background: #14294f;
+  border: 1px solid rgba(197, 160, 89, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 18px rgba(197, 160, 89, 0.25);
 }
 
 .fb-card__cover {
@@ -2036,9 +2110,9 @@ function closeVideo() {
   height: 64px;
   margin-top: -32px;
   margin-bottom: 12px;
-  border: 3px solid #ffffff;
+  border: 3px solid rgba(255, 255, 255, 0.85);
   border-radius: 50%;
-  background: #1a3c28;
+  background: #1a2331;
   color: #ffffff;
   font-size: 28px;
 }
@@ -2046,13 +2120,13 @@ function closeVideo() {
 .fb-card__name {
   font-size: 16px;
   font-weight: 700;
-  color: #1a3c28;
+  color: #ffffff;
   margin-bottom: 4px;
 }
 
 .fb-card__followers {
   font-size: 13px;
-  color: #8a8577;
+  color: rgba(255, 255, 255, 0.6);
   margin-bottom: 16px;
 }
 
@@ -2063,8 +2137,8 @@ function closeVideo() {
   border: none;
   border-radius: 999px;
   padding: 10px 24px;
-  background: #1a3c28;
-  color: #ffffff;
+  background: #c5a059;
+  color: #0a0a0a;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -2072,8 +2146,8 @@ function closeVideo() {
 }
 
 .fb-card__btn:hover {
-  background: #c5a059;
-  color: #1a3c28;
+  background: #d8bc7b;
+  color: #0a0a0a;
 }
 
 /* YouTube-style thumbnail grid */
@@ -2089,7 +2163,14 @@ function closeVideo() {
   overflow: hidden;
   aspect-ratio: 16 / 9;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(26, 60, 40, 0.12);
+  border: 1px solid rgba(197, 160, 89, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 18px rgba(197, 160, 89, 0.25);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-card:hover {
+  border-color: rgba(197, 160, 89, 0.85);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6), 0 0 28px rgba(197, 160, 89, 0.4);
 }
 
 .video-card img {
@@ -2124,7 +2205,7 @@ function closeVideo() {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  background: linear-gradient(to top, rgba(26, 60, 40, 0.9), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92), transparent);
   color: #ffffff;
   font-size: 12px;
 }
@@ -2188,7 +2269,7 @@ function closeVideo() {
 
 .video-modal__close:hover {
   background: #c5a059;
-  color: #1a3c28;
+  color: #0a0a0a;
   transform: rotate(90deg);
 }
 

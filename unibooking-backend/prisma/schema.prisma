@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: the connection string no longer lives here. It's supplied at
+// runtime via the driver adapter passed to `new PrismaClient({ adapter })`
+// (see src/prisma/prisma.service.ts), and to the CLI (migrate/studio) via
+// prisma.config.ts at the project root.
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS (ກຳນົດຄ່າຄົງທີ່)
+// -----------------------------------------------------------------------------
+enum Role {
+  ADMIN
+  CUSTOMER
+  SUPPLIER
+}
+
+enum ServiceType {
+  HOTEL
+  FLIGHT
+  TRAIN
+  PACKAGE
+}
+
+enum BookingStatus {
+  PENDING      // ລໍຖ້າຈ່າຍເງິນ (Hold)
+  CONFIRMED    // ຈ່າຍສຳເລັດ
+  CANCELLED    // ຍົກເລີກ ຫຼື ໝົດເວລາ Hold (BullMQ ຈະປ່ຽນເປັນສະຖານະນີ້)
+  COMPLETED    // ໃຊ້ບໍລິການສຳເລັດແລ້ວ
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+// -----------------------------------------------------------------------------
+// MODELS (ຕາຕະລາງ)
+// -----------------------------------------------------------------------------
+
+// 1. Users: ເກັບຂໍ້ມູນຜູ້ໃຊ້ທຸກລະດັບ
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          Role     @default(CUSTOMER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  supplierProfile Supplier?
+  bookings        Booking[]
+  reviews         Review[]
+}
+
+// 2. Suppliers: ຂໍ້ມູນສະເພາະສຳລັບຄູ່ຄ້າ (ໂຮງແຮມ, ສາຍການບິນ)
+model Supplier {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  companyName    String
+  contactEmail   String
+  contactPhone   String
+  taxId          String?
+  isVerified     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services       Service[]
+}
+
+// 3. Services: ບໍລິການຫຼັກ ເຊັ່ນ ໂຮງແຮມ ຫຼື ຖ້ຽວບິນ
+model Service {
+  id          String       @id @default(uuid())
+  supplierId  String
+  type        ServiceType
+  name        String
+  description String       @db.Text
+  location    String
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  supplier    Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  inventory   InventoryPricing[]
+}
+
+// 4. InventoryPricing: ຈັດການຈຳນວນວ່າງ ແລະ ລາຄາລາຍວັນ (ຫົວໃຈຫຼັກຂອງ OTA)
+model InventoryPricing {
+  id             String   @id @default(uuid())
+  serviceId      String
+  date           DateTime @db.Date
+  availableUnits Int      @default(0) // ໂຕນີ້ສຳຄັນຫຼາຍ ຈະຖືກໃຊ້ເຮັດ Check Constraint
+  price          Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  service        Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  bookingItems   BookingItem[]
+
+  // ປ້ອງກັນບໍ່ໃຫ້ເພີ່ມວັນທີຊ້ຳກັນໃນບໍລິການດຽວ
+  @@unique([serviceId, date]) 
+}
+
+// 5. Promotions: ລະບົບສ່ວນຫຼຸດ
+model Promotion {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  discountValue Decimal  @db.Decimal(10, 2)
+  discountType  String   // ຕົວຢ່າງ: 'PERCENT' ຫຼື 'FIXED'
+  validUntil    DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  bookings      Booking[]
+}
+
+// 6. Bookings: ໃບບິນລວມຂອງການຈອງ
+model Booking {
+  id               String        @id @default(uuid())
+  bookingReference String        @unique
+  userId           String
+  promoId          String?
+  status           BookingStatus @default(PENDING)
+  totalPrice       Decimal       @db.Decimal(10, 2)
+  expiresAt        DateTime      // ຈຸດສຳຄັນ: ເວລາໝົດອາຍຸການ Hold ຫ້ອງ (ສົ່ງໃຫ້ BullMQ)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user             User          @relation(fields: [userId], references: [id])
+  promotion        Promotion?    @relation(fields: [promoId], references: [id])
+  items            BookingItem[]
+  payment          Payment?
+}
+
+// 7. BookingItems: ລາຍລະອຽດການຈອງ (ເຊັ່ນ: ຈອງ 2 ຫ້ອງ ໃນວັນທີ 1 ແລະ 2 ຫ້ອງ ໃນວັນທີ 2)
+model BookingItem {
+  id                 String           @id @default(uuid())
+  bookingId          String
+  inventoryPricingId String
+  quantity           Int              @default(1)
+  unitPrice          Decimal          @db.Decimal(10, 2)
+
+  booking            Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  inventoryPricing   InventoryPricing @relation(fields: [inventoryPricingId], references: [id])
+  review             Review?
+}
+
+// 8. Payments: ຂໍ້ມູນການຊຳລະເງິນ
+model Payment {
+  id             String        @id @default(uuid())
+  bookingId      String        @unique
+  transactionId  String?       @unique
+  amount         Decimal       @db.Decimal(10, 2)
+  method         String        // ຕົວຢ່າງ: 'BCEL_ONE', 'CREDIT_CARD'
+  status         PaymentStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+// 9. Reviews: ລະບົບຣີວິວສະເພາະຈຸດທີ່ໄປພັກຈິງ
+model Review {
+  id            String      @id @default(uuid())
+  userId        String
+  bookingItemId String      @unique
+  rating        Int         @db.SmallInt
+  comment       String?     @db.Text
+  createdAt     DateTime    @default(now())
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingItem   BookingItem @relation(fields: [bookingItemId], references: [id], onDelete: Cascade)
+}

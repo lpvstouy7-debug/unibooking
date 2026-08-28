@@ -1,5 +1,5 @@
 <template>
-  <a-layout class="site-layout">
+  <a-layout class="site-layout" :class="{ 'site-layout--dark': route.meta.hideSiteHeader }">
     <!-- Header: single green navbar, logo | centered nav | lang + user actions.
          Pages that render their own integrated hero navbar (e.g. the homepage
          floating hero card) set route.meta.hideSiteHeader — this bar then stays
@@ -138,7 +138,7 @@
 
     <!-- Content: pages render here. Full-bleed: no horizontal boxing at this level,
          each page/section owns its own background width and .container centering. -->
-    <a-layout-content class="site-content">
+    <a-layout-content class="site-content" :class="{ 'site-content--dark': route.meta.hideSiteHeader }">
       <slot />
     </a-layout-content>
 
@@ -257,6 +257,13 @@ function handleDrawerMenuClick({ key }) {
   min-height: 100vh;
 }
 
+/* Landing page only (route.meta.hideSiteHeader): the layout's own Ant Design
+   backdrop and content canvas would otherwise show light grey/blue through
+   any seam between the page's full-bleed black sections. */
+.site-layout--dark {
+  background: transparent;
+}
+
 /* Shared centered container: full-width bars/sections sit behind this, content stays 1200px-capped */
 .container {
   width: 100%;
@@ -299,9 +306,10 @@ function handleDrawerMenuClick({ key }) {
    nav centered, lang + login/user grouped far right (see .site-header__actions) */
 .site-header {
   width: 100%;
-  background: #064e3b;
+  background: transparent;
   height: 64px;
   line-height: 64px;
+  border-bottom: 1px solid rgba(197, 160, 89, 0.15);
 }
 
 /* Pages with their own integrated hero navbar (see site-header--hero-mode
@@ -422,12 +430,17 @@ function handleDrawerMenuClick({ key }) {
   background: #f0f9ff;
 }
 
+.site-content--dark {
+  background: transparent;
+}
+
 /* ============================================================
    Footer: 5-column luxury layout on the dark green/gold theme
    ============================================================ */
 .site-footer {
   flex-shrink: 0;
-  background: #1a3c28;
+  background: #14294f;
+  border-top: 1px solid rgba(197, 160, 89, 0.15);
   color: rgba(251, 249, 242, 0.7);
   padding: 64px 0 0;
   height: auto;
@@ -454,7 +467,7 @@ function handleDrawerMenuClick({ key }) {
   display: inline-block;
   font-size: 22px;
   font-weight: 700;
-  color: #ffffff;
+  color: #c5a059;
   text-decoration: none;
   letter-spacing: 0.5px;
   margin-bottom: 16px;
@@ -488,7 +501,7 @@ function handleDrawerMenuClick({ key }) {
 .footer__social-icon:hover {
   background: #c5a059;
   border-color: #c5a059;
-  color: #1a3c28;
+  color: #0a0a0a;
 }
 
 .footer__heading {
@@ -496,7 +509,7 @@ function handleDrawerMenuClick({ key }) {
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: #ffffff;
+  color: #c5a059;
   margin-bottom: 20px;
 }
 
