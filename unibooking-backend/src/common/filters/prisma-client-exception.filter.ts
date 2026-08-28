@@ -38,11 +38,12 @@ const PRISMA_ERROR_MAP: Record<string, PrismaErrorMapping> = {
   },
 
   // .findUniqueOrThrow / .update / .delete targeting a row that doesn't exist.
+  // Deliberately NOT forwarding Prisma's own `meta.cause` text -- it echoes
+  // internal model/relation names straight from the ORM layer, which is
+  // exactly the kind of schema detail this filter exists to keep off the wire.
   P2025: {
     status: HttpStatus.NOT_FOUND,
-    buildMessage: (error) =>
-      (error.meta?.cause as string | undefined) ??
-      'The requested record could not be found.',
+    buildMessage: () => 'The requested record could not be found.',
   },
 
   // Foreign key constraint failed -- e.g. booking a serviceId that was deleted.
@@ -113,7 +114,12 @@ export class PrismaClientExceptionFilter implements ExceptionFilter {
         ? 'Database Constraint Violation'
         : 'Internal Server Error',
       message,
-      code: exception.code,
+      // Only echo the Prisma error code back for constraints we've explicitly
+      // mapped (a stable, documented contract clients can branch on). An
+      // *unmapped* code means an unexpected failure mode -- surfacing it
+      // fingerprints the ORM/driver internals to the caller for no benefit,
+      // so it stays server-side only (logged above).
+      ...(mapping ? { code: exception.code } : {}),
       path: request.url,
       timestamp: new Date().toISOString(),
     });

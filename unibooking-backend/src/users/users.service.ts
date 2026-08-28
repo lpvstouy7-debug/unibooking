@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, User } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateUserDto } from './dto/create-user.dto';
 
-/**
- * Data-access layer for User. Kept deliberately thin in this scaffolding
- * phase -- password hashing, role guards, and DTO validation land here once
- * AuthModule needs them in Phase 02.
- */
+// Cost factor for bcrypt's hashing rounds. 12 is the current common
+// baseline (~250ms/hash on modern hardware) -- high enough to resist
+// offline brute-force, low enough to not bottleneck login/register.
+const BCRYPT_SALT_ROUNDS = 12;
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -24,12 +26,25 @@ export class UsersService {
   }
 
   /**
-   * Thin passthrough to Prisma -- callers are expected to have already
-   * hashed `password_hash` (done in AuthModule, not here). Uniqueness on
-   * `email` is enforced at the DB level; a duplicate throws P2002, which
-   * PrismaClientExceptionFilter turns into a clean 409 automatically.
+   * The only place a User row is ever written from plaintext input --
+   * hashes `dto.password` with bcrypt before it touches Prisma/Postgres, so
+   * the raw password never reaches a query, a log line, or the database.
+   * `role` isn't accepted here; every user created this way gets the
+   * schema's CUSTOMER default (see RegisterDto for why).
+   * Email uniqueness is enforced at the DB level -- a duplicate throws
+   * P2002, which PrismaClientExceptionFilter turns into a clean 409.
    */
-  create(data: Prisma.UserCreateInput): Promise<User> {
-    return this.prisma.user.create({ data });
+  async create(dto: CreateUserDto): Promise<User> {
+    const password_hash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+
+    return this.prisma.user.create({
+      data: {
+        email: dto.email,
+        password_hash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+      },
+    });
   }
 }

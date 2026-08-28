@@ -1,9 +1,38 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+// Namespace import, not `import cookieParser from 'cookie-parser'` --
+// this tsconfig doesn't set esModuleInterop, and cookie-parser is a plain
+// CJS `module.exports = fn`, so a default import would resolve to
+// `undefined` at runtime while still type-checking fine.
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Populates `request.cookies`, which JwtStrategy's cookie extractor reads.
+  app.use(cookieParser());
+
+  // The Nuxt frontend calls this API with `credentials: 'include'`, so the
+  // browser only attaches/accepts the auth cookie if the server explicitly
+  // opts in with `credentials: true` -- and per the Fetch/XHR CORS spec,
+  // that combination is REJECTED if `origin` is the wildcard `*`, so the
+  // frontend's exact origin(s) must be named.
+  app.enableCors({
+    origin: (process.env.CORS_ORIGIN ?? 'http://localhost:3000').split(','),
+    credentials: true,
+  });
+
+  // Applied globally so every DTO (RegisterDto, LoginDto, ...) is validated
+  // the same way without each controller opting in individually.
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // strips any request field not declared on the DTO
+      forbidNonWhitelisted: true, // ...and 400s instead of silently dropping it
+      transform: true, // turns plain JSON into real DTO class instances
+    }),
+  );
 
   // Ties Prisma's connection pool to Nest's own shutdown lifecycle -- see
   // the comment on PrismaService.enableShutdownHooks for why this matters
