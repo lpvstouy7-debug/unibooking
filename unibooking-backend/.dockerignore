@@ -1,0 +1,44 @@
+# Dependencies -- reinstalled fresh inside the image via `npm ci`, and a
+# host-platform node_modules (native addons like bcrypt built for Windows
+# or macOS) would silently break at runtime if copied into a Linux image.
+node_modules
+
+# Build output -- produced inside the image by `npm run build`; shipping a
+# stale local dist/ could get copied instead of the freshly-built one.
+dist
+
+# Secrets and local env -- never bake credentials into an image layer.
+# Runtime config comes entirely from docker-compose's `environment:`.
+.env
+.env.*
+!.env.example
+
+# User-uploaded files -- runtime data, not build input (and see
+# docker-compose.yml's uploads_data volume for how this persists instead).
+uploads
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Editor/OS cruft
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# Test artifacts and reports
+coverage
+test
+*.spec.ts
+*.test.ts
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker itself -- irrelevant inside its own build context
+Dockerfile
+.dockerignore
+docker-compose*.yml

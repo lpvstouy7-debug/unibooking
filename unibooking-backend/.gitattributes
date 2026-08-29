@@ -1,0 +1,6 @@
+# Forces LF regardless of a contributor's core.autocrlf setting. Without
+# this, a Windows checkout can silently rewrite docker-entrypoint.sh to
+# CRLF line endings -- Alpine's /bin/sh then fails the shebang with
+# "no such file or directory", which is a genuinely confusing error for
+# what's actually a line-ending problem.
+*.sh text eol=lf

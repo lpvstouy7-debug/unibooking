@@ -1,0 +1,119 @@
+# Production compose file for the UniBooking API.
+#
+# Usage:
+#   1. Copy .env.example to .env and fill in real values (POSTGRES_PASSWORD
+#      and JWT_SECRET have no defaults below on purpose -- see the `:?`
+#      syntax -- so `docker compose up` refuses to start with placeholder
+#      secrets instead of silently booting insecurely).
+#   2. docker compose up -d --build
+#
+# --------------------------------------------------------------------------
+# Prisma migration strategy
+# --------------------------------------------------------------------------
+# `npx prisma migrate deploy` runs from inside the `api` container's own
+# ENTRYPOINT (docker-entrypoint.sh), on every start, BEFORE `node dist/main.js`
+# is exec'd -- not as a separate compose service and not run manually from
+# the host. Three things make that safe rather than reckless:
+#
+#   - `migrate deploy` only ever applies migrations already committed to
+#     prisma/migrations/ (baked into the image at build time). It never
+#     generates new migrations or introspects/diffs the schema the way
+#     `migrate dev` does, so there's no risk of it improvising a schema
+#     change against a production database.
+#   - It's idempotent: migrations already marked applied in the
+#     `_prisma_migrations` table are skipped, so re-running it on every
+#     container start/restart is a fast no-op once the schema is current.
+#   - It's safe under concurrent execution: Prisma takes a Postgres advisory
+#     lock for the duration, so if you ever scale `api` to multiple replicas
+#     (`docker compose up --scale api=3`), only one of them actually applies
+#     pending migrations while the others wait, instead of racing.
+#
+# The `prisma` CLI package is what makes this possible from inside the
+# lean production image -- see package.json (it's kept as a real
+# dependency, not a devDependency, specifically for this) and the Dockerfile
+# comment on stage 2.
+#
+# If you'd rather decouple "apply schema" from "start serving traffic"
+# entirely (e.g. running migrations as a one-off CI/CD step ahead of a
+# rolling deploy), run the same command against the built image directly
+# instead of relying on the entrypoint:
+#   docker compose run --rm --no-deps api npx prisma migrate deploy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-unibooking}
+      # `:?` -- refuses to start rather than silently defaulting a database
+      # password.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-unibooking}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Only exposed to other containers on the compose network by default.
+    # Uncomment to reach it from the host too (e.g. a local GUI client) --
+    # never expose Postgres directly to the public internet.
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-unibooking} -d ${POSTGRES_DB:-unibooking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Snapshots to disk (the redis_data volume) periodically instead of
+    # running fully in-memory-only -- a plain restart shouldn't silently
+    # drop whatever's queued via BullMQ.
+    command: ["redis-server", "--save", "60", "1"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-unibooking}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-unibooking}?schema=public"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      PORT: "3000"
+      NODE_ENV: "production"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env, e.g. openssl rand -base64 48}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-1d}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:3000}"
+      APP_URL: "${APP_URL:-http://localhost:3000}"
+    ports:
+      - "${PORT:-3001}:3000"
+    volumes:
+      # Persists what LocalDiskStorageProvider writes to ./uploads inside
+      # the container -- without this, every uploaded image is lost on
+      # container recreate/redeploy, since the container filesystem itself
+      # is ephemeral.
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:

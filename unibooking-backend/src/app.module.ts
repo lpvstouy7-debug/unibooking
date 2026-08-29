@@ -1,13 +1,22 @@
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { PrismaClientExceptionFilter } from './common/filters/prisma-client-exception.filter';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { ServicesModule } from './services/services.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { BookingsModule } from './bookings/bookings.module';
+import { TasksModule } from './tasks/tasks.module';
+import { PaymentsModule } from './payments/payments.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -22,6 +31,16 @@ import { AuthModule } from './auth/auth.module';
     // module below (and Bookings/Payments/Inventory in later phases) injects
     // PrismaService directly without re-importing PrismaModule.
     PrismaModule,
+
+    // Exposes ./uploads on disk at GET /uploads/<filename> -- the other half
+    // of UploadsModule's LocalDiskStorageProvider, which writes into this
+    // exact directory (see its comment on why both use process.cwd()).
+    // serveRoot scopes this to /uploads/* only, so it can't shadow any
+    // other route (all of UploadsController's own routes are POST).
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
 
     // Redis connection shared by every BullMQ queue registered anywhere in
     // the app (e.g. a future `BullModule.registerQueue('booking-expiry')`
@@ -47,6 +66,13 @@ import { AuthModule } from './auth/auth.module';
 
     UsersModule,
     AuthModule,
+    SuppliersModule,
+    ServicesModule,
+    BookingsModule,
+    TasksModule,
+    PaymentsModule,
+    UploadsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl"]
 }
 
 // Prisma 7: the connection string no longer lives here. It's supplied at
@@ -53,6 +54,7 @@ model User {
   lastName      String
   phone         String?
   role          Role     @default(CUSTOMER)
+  isActive      Boolean  @default(true) // false = banned/suspended by an admin (see AdminModule)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -108,6 +110,7 @@ model InventoryPricing {
 
   // ປ້ອງກັນບໍ່ໃຫ້ເພີ່ມວັນທີຊ້ຳກັນໃນບໍລິການດຽວ
   @@unique([serviceId, date]) 
+  @@index([date, availableUnits]) //
 }
 
 // 5. Promotions: ລະບົບສ່ວນຫຼຸດ
