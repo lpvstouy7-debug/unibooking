@@ -58,7 +58,7 @@
             <a-dropdown v-if="authStore.isAuthenticated" placement="bottomRight" class="user-menu-wrapper--desktop">
               <a class="user-menu" @click.prevent>
                 <a-avatar>{{ userInitial }}</a-avatar>
-                <span class="user-menu__name">{{ authStore.user?.name }}</span>
+                <span class="user-menu__name">{{ authStore.fullName }}</span>
               </a>
               <template #overlay>
                 <a-menu @click="handleMenuClick">
@@ -123,7 +123,7 @@
 
           <template v-if="authStore.isAuthenticated">
             <a-menu-item key="profile">
-              <NuxtLink to="/profile">{{ authStore.user?.name }}</NuxtLink>
+              <NuxtLink to="/profile">{{ authStore.fullName }}</NuxtLink>
             </a-menu-item>
             <a-menu-item key="logout">
               ອອກຈາກລະບົບ
@@ -265,7 +265,7 @@ const route = useRoute()
 // Session restore happens in app/plugins/auth.client.js, before mount
 const authStore = useAuthStore()
 
-const userInitial = computed(() => authStore.user?.name?.charAt(0).toUpperCase() ?? '?')
+const userInitial = computed(() => authStore.fullName?.charAt(0).toUpperCase() ?? '?')
 
 const isDrawerOpen = ref(false)
 

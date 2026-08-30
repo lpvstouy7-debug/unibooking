@@ -45,7 +45,7 @@
                   Login
                 </NuxtLink>
                 <NuxtLink v-else to="/profile" class="hero-navbar__btn">
-                  {{ authStore.user?.name }}
+                  {{ authStore.fullName }}
                 </NuxtLink>
               </MagicBorderGlow>
             </ClientOnly>

@@ -9,7 +9,12 @@ import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true makes Nest stash the unparsed request body on
+  // `req.rawBody` alongside the normal parsed `req.body` -- payment
+  // gateway webhooks (PaymentsController's /payments/webhook/* routes)
+  // need the exact original bytes to verify a signature over; re-serializing
+  // the parsed JSON body rarely reproduces them byte-for-byte.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Populates `request.cookies`, which JwtStrategy's cookie extractor reads.
   app.use(cookieParser());

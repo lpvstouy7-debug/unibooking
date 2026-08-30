@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -9,14 +10,17 @@ import {
 import { BookingStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
-import { PaymentWebhookDto } from './dto/payment-webhook.dto';
+import {
+  NormalizedPaymentEvent,
+  PAYMENT_GATEWAYS,
+  PaymentGateway,
+} from './gateways/payment-gateway.interface';
 import type { JwtPayload } from '../auth/strategies/jwt.strategy';
 
-const MOCK_GATEWAY_BASE_URL = 'https://mock-gateway.unibooking.dev/checkout';
-const PAYMENT_METHOD = 'MOCK_GATEWAY';
-
 export interface CheckoutSession {
-  checkoutUrl: string;
+  checkoutUrl?: string;
+  qrCodeData?: string;
+  qrCodeImageUrl?: string;
   transactionId: string;
   bookingId: string;
   amount: number;
@@ -30,15 +34,25 @@ function generateTransactionId(): string {
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(PAYMENT_GATEWAYS)
+    private readonly gateways: Map<string, PaymentGateway>,
+  ) {}
+
+  private getGateway(method: string): PaymentGateway {
+    const gateway = this.gateways.get(method);
+    if (!gateway) {
+      throw new BadRequestException(`Unsupported payment method "${method}".`);
+    }
+    return gateway;
+  }
 
   /**
-   * Creates (or re-creates, on a retried checkout) a mock gateway session
-   * for a booking. Structurally this is exactly the shape a real
-   * integration takes: create/reuse a Payment row, hand the caller a
-   * checkoutUrl + transactionId minted by the gateway. Swapping the mock
-   * URL/id generation below for `stripe.checkout.sessions.create()` is the
-   * only change a real Stripe integration needs here.
+   * Creates (or re-creates, on a retried checkout) a real gateway session
+   * for a booking. Structurally unchanged from the original mock: create/
+   * reuse a Payment row, hand the caller a session minted by whichever
+   * gateway `dto.method` selects.
    */
   async createCheckoutSession(
     dto: CreateCheckoutDto,
@@ -67,32 +81,87 @@ export class PaymentsService {
       );
     }
 
+    const gateway = this.getGateway(dto.method);
     const transactionId = generateTransactionId();
+    const amount = Number(booking.totalPrice);
+
+    const session = await gateway.createCheckout({
+      booking,
+      amount,
+      transactionId,
+    });
 
     // upsert, not create: a customer re-opening an abandoned checkout hits
     // the same Payment row (bookingId is @unique on Payment) instead of a
-    // P2002 unique-constraint error on a second attempt.
+    // P2002 unique-constraint error on a second attempt. Also lets a
+    // customer switch payment method on retry -- `method` is overwritten.
     await this.prisma.payment.upsert({
       where: { bookingId: booking.id },
       create: {
         bookingId: booking.id,
-        transactionId,
+        transactionId: session.transactionId,
         amount: booking.totalPrice,
-        method: PAYMENT_METHOD,
+        method: dto.method,
         status: PaymentStatus.PENDING,
       },
       update: {
-        transactionId,
+        transactionId: session.transactionId,
+        method: dto.method,
         status: PaymentStatus.PENDING,
       },
     });
 
     return {
-      checkoutUrl: `${MOCK_GATEWAY_BASE_URL}/${transactionId}`,
-      transactionId,
+      checkoutUrl: session.checkoutUrl,
+      qrCodeData: session.qrCodeData,
+      qrCodeImageUrl: session.qrCodeImageUrl,
+      transactionId: session.transactionId,
       bookingId: booking.id,
-      amount: Number(booking.totalPrice),
+      amount,
     };
+  }
+
+  /**
+   * Lets the frontend poll a QR-based checkout for completion instead of
+   * (or alongside) a webhook -- QR flows confirm on the customer's phone,
+   * away from the browser that opened checkout, so there's no redirect to
+   * carry a result back the way Stripe's success_url does.
+   */
+  async getPaymentStatus(
+    bookingId: string,
+    user: JwtPayload,
+  ): Promise<{ bookingStatus: BookingStatus; paymentStatus: PaymentStatus | null }> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payment: true },
+    });
+    if (!booking) {
+      throw new NotFoundException(`Booking with id "${bookingId}" not found.`);
+    }
+    if (booking.userId !== user.sub) {
+      throw new ForbiddenException('This booking does not belong to you.');
+    }
+
+    return {
+      bookingStatus: booking.status,
+      paymentStatus: booking.payment?.status ?? null,
+    };
+  }
+
+  /** Verifies the gateway's signature over the raw request body, then applies the resulting event through the shared confirm/fail logic below. */
+  async handleGatewayWebhook(
+    method: string,
+    rawBody: Buffer,
+    headers: Record<string, string | string[] | undefined>,
+  ): Promise<{ received: boolean }> {
+    const gateway = this.getGateway(method);
+    const event = gateway.verifyWebhook(rawBody, headers);
+
+    if (event.status === 'ignored') {
+      return { received: true };
+    }
+
+    return this.applyPaymentEvent(event);
   }
 
   /**
@@ -117,10 +186,12 @@ export class PaymentsService {
    *    manual refund instead of thrown, so a well-behaved gateway doesn't
    *    read a 4xx/5xx as "retry me" for a case retrying can never fix.
    */
-  async handleWebhook(dto: PaymentWebhookDto): Promise<{ received: boolean }> {
-    const bookingId = await this.resolveBookingId(dto);
+  private async applyPaymentEvent(
+    event: NormalizedPaymentEvent,
+  ): Promise<{ received: boolean }> {
+    const bookingId = await this.resolveBookingId(event);
 
-    if (dto.status === 'failed') {
+    if (event.status === 'failed') {
       await this.prisma.payment.updateMany({
         where: { bookingId },
         data: { status: PaymentStatus.FAILED },
@@ -140,7 +211,7 @@ export class PaymentsService {
           where: { bookingId },
           data: {
             status: PaymentStatus.SUCCESS,
-            transactionId: dto.transactionId,
+            ...(event.transactionId && { transactionId: event.transactionId }),
           },
         });
         return;
@@ -160,7 +231,7 @@ export class PaymentsService {
           where: { bookingId },
           data: {
             status: PaymentStatus.SUCCESS,
-            transactionId: dto.transactionId,
+            ...(event.transactionId && { transactionId: event.transactionId }),
           },
         });
         return;
@@ -181,21 +252,23 @@ export class PaymentsService {
   }
 
   /** Prefers an explicit bookingId; otherwise resolves it via the Payment row the gateway's transactionId points back to. */
-  private async resolveBookingId(dto: PaymentWebhookDto): Promise<string> {
-    if (dto.bookingId) {
-      return dto.bookingId;
+  private async resolveBookingId(event: NormalizedPaymentEvent): Promise<string> {
+    if (event.bookingId) {
+      return event.bookingId;
     }
-    if (dto.transactionId) {
+    if (event.transactionId) {
       const payment = await this.prisma.payment.findUnique({
-        where: { transactionId: dto.transactionId },
+        where: { transactionId: event.transactionId },
       });
       if (!payment) {
         throw new NotFoundException(
-          `No payment found for transactionId "${dto.transactionId}".`,
+          `No payment found for transactionId "${event.transactionId}".`,
         );
       }
       return payment.bookingId;
     }
-    throw new BadRequestException('transactionId or bookingId is required.');
+    throw new BadRequestException(
+      'Webhook event carried neither a transactionId nor a bookingId.',
+    );
   }
 }

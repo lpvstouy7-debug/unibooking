@@ -7,7 +7,19 @@
           <h3 class="filter-card__title">ຕົວກອງ</h3>
 
           <div class="filter-block">
-            <p class="filter-block__label">ຊ່ວງລາຄາ</p>
+            <p class="filter-block__label">ສະຖານທີ່</p>
+            <a-input
+              v-model:value="filters.location"
+              size="large"
+              placeholder="ວຽງຈັນ, ຫຼວງພະບາງ..."
+              allow-clear
+            />
+          </div>
+
+          <a-divider />
+
+          <div class="filter-block">
+            <p class="filter-block__label">ຊ່ວງລາຄາ / ຄືນ</p>
             <a-slider
               v-model:value="filters.priceRange"
               range
@@ -23,57 +35,92 @@
           <a-divider />
 
           <div class="filter-block">
-            <p class="filter-block__label">ລະດັບດາວ</p>
-            <a-checkbox-group v-model:value="filters.stars" class="filter-block__group">
-              <a-checkbox v-for="star in [5, 4, 3, 2]" :key="star" :value="star" class="filter-block__checkbox">
-                {{ star }} ດາວ
-              </a-checkbox>
-            </a-checkbox-group>
+            <p class="filter-block__label">ວັນທີ່ເຂົ້າພັກ</p>
+            <a-space direction="vertical" style="width: 100%">
+              <a-input v-model:value="filters.checkInDate" type="date" size="large" />
+              <a-input v-model:value="filters.checkOutDate" type="date" size="large" />
+            </a-space>
+          </div>
+
+          <a-divider />
+
+          <div class="filter-block">
+            <p class="filter-block__label">ລະດັບດາວ (ຂັ້ນຕ່ຳ)</p>
+            <a-rate v-model:value="filters.starRating" allow-clear />
           </div>
 
           <a-divider />
 
           <div class="filter-block">
             <p class="filter-block__label">ປະເພດທີ່ພັກ</p>
-            <a-checkbox-group v-model:value="filters.propertyTypes" class="filter-block__group">
-              <a-checkbox v-for="type in propertyTypeOptions" :key="type" :value="type" class="filter-block__checkbox">
-                {{ type }}
+            <a-select v-model:value="filters.propertyType" size="large" style="width: 100%" allow-clear placeholder="ທຸກປະເພດ">
+              <a-select-option v-for="type in propertyTypeOptions" :key="type" :value="type">{{ type }}</a-select-option>
+            </a-select>
+          </div>
+
+          <a-divider />
+
+          <div class="filter-block">
+            <p class="filter-block__label">ສິ່ງອຳນວຍຄວາມສະດວກ</p>
+            <a-checkbox-group v-model:value="filters.amenities" class="filter-block__group">
+              <a-checkbox v-for="amenity in amenityOptions" :key="amenity" :value="amenity" class="filter-block__checkbox">
+                {{ amenity }}
               </a-checkbox>
             </a-checkbox-group>
           </div>
+
+          <a-divider />
+
+          <a-button type="primary" block size="large" :loading="bookingStore.isLoading" @click="runSearch">
+            ຄົ້ນຫາ
+          </a-button>
         </a-card>
       </a-col>
 
       <!-- Results -->
       <a-col :xs="24" :md="17" :lg="18">
         <div class="results-header">
-          <h2 class="results-header__count">ພົບ {{ filteredHotels.length }} ໂຮງແຮມໃນວຽງຈັນ</h2>
-          <a-select id="hotels-sort-by" v-model:value="sortBy" size="large" class="results-header__sort">
-            <a-select-option value="price-asc">ລາຄາ: ຕ່ຳ ຫາ ສູງ</a-select-option>
-            <a-select-option value="rating-desc">ຄະແນນສູງສຸດ</a-select-option>
+          <h2 class="results-header__count">ພົບ {{ bookingStore.servicesMeta?.total ?? 0 }} ໂຮງແຮມ</h2>
+          <a-select id="hotels-sort-by" v-model:value="filters.sortBy" size="large" class="results-header__sort" @change="runSearch">
+            <a-select-option value="price_asc">ລາຄາ: ຕ່ຳ ຫາ ສູງ</a-select-option>
+            <a-select-option value="price_desc">ລາຄາ: ສູງ ຫາ ຕ່ຳ</a-select-option>
+            <a-select-option value="newest">ໃໝ່ລ່າສຸດ</a-select-option>
           </a-select>
         </div>
 
-        <div class="hotel-list">
-          <div v-for="hotel in sortedHotels" :key="hotel.id" class="hotel-card">
-            <img :src="hotel.image" :alt="hotel.name" class="hotel-card__image" />
+        <a-empty v-if="!bookingStore.isLoading && !bookingStore.services.length" description="ບໍ່ພົບໂຮງແຮມທີ່ຕົງກັບການຄົ້ນຫາ" />
+
+        <div v-else class="hotel-list">
+          <div v-for="hotel in bookingStore.services" :key="hotel.id" class="hotel-card">
+            <img :src="placeholderImage(hotel.name)" :alt="hotel.name" class="hotel-card__image" />
 
             <div class="hotel-card__body">
               <h3 class="hotel-card__name">{{ hotel.name }}</h3>
-              <a-rate disabled :value="hotel.stars" class="hotel-card__rate" />
+              <a-rate v-if="hotel.hotelDetails?.starRating" disabled :value="hotel.hotelDetails.starRating" class="hotel-card__rate" />
+              <p class="hotel-card__supplier">
+                {{ hotel.supplier?.companyName }}
+                <a-tag v-if="hotel.supplier?.isVerified" color="green" class="hotel-card__verified">Verified</a-tag>
+              </p>
               <p class="hotel-card__location">
                 <EnvironmentOutlined />
                 {{ hotel.location }}
               </p>
-              <div class="hotel-card__amenities">
-                <a-tag v-for="amenity in hotel.amenities" :key="amenity" color="blue">{{ amenity }}</a-tag>
+              <p class="hotel-card__description">{{ hotel.description }}</p>
+              <div v-if="hotel.hotelDetails?.amenities?.length" class="hotel-card__amenities">
+                <a-tag v-for="amenity in hotel.hotelDetails.amenities" :key="amenity" color="blue">{{ amenity }}</a-tag>
               </div>
             </div>
 
             <div class="hotel-card__action">
-              <div class="hotel-card__price">₭ {{ formatPrice(hotel.price) }} / ຄືນ</div>
-              <div class="hotel-card__price-note">ລວມພາສີ ແລະ ຄ່າທຳນຽມແລ້ວ</div>
-              <a-button type="primary" size="large" @click="handleBookNow(hotel)">
+              <template v-if="unitPriceFor(hotel) != null">
+                <div class="hotel-card__price">₭ {{ formatPrice(unitPriceFor(hotel)) }} / ຄືນ</div>
+                <div class="hotel-card__price-note">ລວມພາສີ ແລະ ຄ່າທຳນຽມແລ້ວ</div>
+              </template>
+              <template v-else>
+                <div class="hotel-card__price-note">ບໍ່ມີຫ້ອງວ່າງໃນຊ່ວງວັນທີ່ນີ້</div>
+              </template>
+
+              <a-button type="primary" size="large" :disabled="unitPriceFor(hotel) == null" @click="handleBookNow(hotel)">
                 ຈອງເລີຍ
               </a-button>
             </div>
@@ -85,83 +132,65 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, onMounted } from 'vue'
 import { EnvironmentOutlined } from '@ant-design/icons-vue'
 import { useBookingStore } from '~/stores/booking'
 
 const bookingStore = useBookingStore()
 const router = useRouter()
 
-const propertyTypeOptions = ['Hotel', 'Resort', 'Villa', 'Guesthouse']
+function isoDate(date) {
+  return date.toISOString().slice(0, 10)
+}
 
-const hotels = reactive([
-  {
-    id: 1,
-    name: 'Landmark Mekong Riverside Hotel',
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=800&auto=format&fit=crop',
-    stars: 5,
-    location: 'ຕິດແມ່ນ້ຳຂອງ, ນະຄອນຫຼວງວຽງຈັນ',
-    price: 850000,
-    propertyType: 'Hotel',
-    amenities: ['Free WiFi', 'Pool', 'Breakfast']
-  },
-  {
-    id: 2,
-    name: 'Crowne Plaza Vientiane',
-    image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=800&auto=format&fit=crop',
-    stars: 5,
-    location: 'ໃຈກາງນະຄອນຫຼວງວຽງຈັນ',
-    price: 1200000,
-    propertyType: 'Hotel',
-    amenities: ['Free WiFi', 'Gym', 'Spa']
-  },
-  {
-    id: 3,
-    name: 'Salana Boutique Hotel',
-    image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=800&auto=format&fit=crop',
-    stars: 4,
-    location: 'ຖະໜົນເຊດຖາທິລາດ, ວຽງຈັນ',
-    price: 550000,
-    propertyType: 'Villa',
-    amenities: ['Free WiFi', 'Breakfast']
-  },
-  {
-    id: 4,
-    name: 'Vientiane Garden Guesthouse',
-    image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=800&auto=format&fit=crop',
-    stars: 3,
-    location: 'ບ້ານທ່າດິນແດງ, ວຽງຈັນ',
-    price: 280000,
-    propertyType: 'Guesthouse',
-    amenities: ['Free WiFi']
-  }
-])
+const today = new Date()
+const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000)
 
+// Property type/amenity option lists: unibooking-backend's HotelDetails
+// stores propertyType as a fixed enum (HotelPropertyType) but amenities as a
+// free-form String[] -- these are just a curated set of common values, not
+// an exhaustive/enforced list.
+const propertyTypeOptions = ['HOTEL', 'RESORT', 'VILLA', 'GUESTHOUSE']
+const amenityOptions = ['WiFi', 'Pool', 'Breakfast', 'Gym', 'Spa', 'Parking', 'Air Conditioning']
+
+// Price lives on InventoryPricing (per-date), not on Service itself, so a
+// date range must always accompany a hotel search for prices to come back
+// at all -- see HotelSearchDto/HotelsService.search on the backend.
 const filters = reactive({
-  priceRange: [200000, 2000000],
-  stars: [],
-  propertyTypes: []
+  location: '',
+  priceRange: [0, 5000000],
+  checkInDate: isoDate(today),
+  checkOutDate: isoDate(tomorrow),
+  starRating: 0,
+  propertyType: undefined,
+  amenities: [],
+  sortBy: 'price_asc'
 })
 
-const sortBy = ref('price-asc')
-
-const filteredHotels = computed(() => {
-  return hotels.filter((hotel) => {
-    const inPriceRange = hotel.price >= filters.priceRange[0] && hotel.price <= filters.priceRange[1]
-    const matchesStars = filters.stars.length === 0 || filters.stars.includes(hotel.stars)
-    const matchesType = filters.propertyTypes.length === 0 || filters.propertyTypes.includes(hotel.propertyType)
-    return inPriceRange && matchesStars && matchesType
+function runSearch() {
+  bookingStore.searchHotels({
+    location: filters.location || undefined,
+    checkInDate: filters.checkInDate,
+    checkOutDate: filters.checkOutDate,
+    minPrice: filters.priceRange[0] || undefined,
+    maxPrice: filters.priceRange[1] || undefined,
+    starRating: filters.starRating || undefined,
+    propertyType: filters.propertyType,
+    amenities: filters.amenities.length ? filters.amenities : undefined,
+    sortBy: filters.sortBy
   })
-})
+}
 
-const sortedHotels = computed(() => {
-  const list = [...filteredHotels.value]
+onMounted(runSearch)
 
-  if (sortBy.value === 'price-asc') {
-    return list.sort((a, b) => a.price - b.price)
-  }
-  return list.sort((a, b) => b.stars - a.stars)
-})
+function unitPriceFor(service) {
+  const entry = service.inventory?.find((row) => row.date?.slice(0, 10) === filters.checkInDate) ?? service.inventory?.[0]
+  return entry ? Number(entry.price) : null
+}
+
+function placeholderImage(name) {
+  return `https://placehold.co/600x400/f0f9ff/1e40af?text=${encodeURIComponent(name)}`
+}
 
 function formatPrice(value) {
   return new Intl.NumberFormat('lo-LA').format(value)
@@ -169,6 +198,8 @@ function formatPrice(value) {
 
 function handleBookNow(hotel) {
   bookingStore.selectedService = hotel
+  bookingStore.bookingData.startDate = filters.checkInDate
+  bookingStore.bookingData.endDate = filters.checkOutDate
   router.push('/checkout')
 }
 </script>
@@ -206,16 +237,6 @@ function handleBookNow(hotel) {
   font-size: 13px;
   color: #64748b;
   margin-top: 8px;
-}
-
-.filter-block__group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.filter-block__checkbox {
-  margin-left: 0 !important;
 }
 
 /* Results header */
@@ -283,7 +304,23 @@ function handleBookNow(hotel) {
 
 .hotel-card__rate {
   font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.hotel-card__supplier {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #64748b;
   margin-bottom: 8px;
+}
+
+.hotel-card__amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .hotel-card__location {
@@ -295,10 +332,13 @@ function handleBookNow(hotel) {
   margin-bottom: 12px;
 }
 
-.hotel-card__amenities {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.hotel-card__description {
+  font-size: 13px;
+  color: #94a3b8;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .hotel-card__action {

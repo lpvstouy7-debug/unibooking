@@ -5,7 +5,7 @@
       <div class="profile-header__inner">
         <a-avatar :size="64">{{ userInitial }}</a-avatar>
         <div>
-          <h1 class="profile-header__name">{{ authStore.user?.name }}</h1>
+          <h1 class="profile-header__name">{{ authStore.fullName }}</h1>
           <p class="profile-header__email">{{ authStore.user?.email }}</p>
         </div>
       </div>
@@ -27,7 +27,13 @@
             row-key="id"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
+              <template v-if="column.key === 'serviceName'">
+                {{ firstItem(record)?.inventoryPricing?.service?.name || '-' }}
+              </template>
+              <template v-else-if="column.key === 'date'">
+                {{ formatDate(firstItem(record)?.inventoryPricing?.date) }}
+              </template>
+              <template v-else-if="column.key === 'status'">
                 <a-tag :color="statusTagMeta(record.status).color">
                   {{ statusTagMeta(record.status).text }}
                 </a-tag>
@@ -47,7 +53,7 @@
         <!-- Tab 2: Personal Info -->
         <a-tab-pane key="info" tab="ຂໍ້ມູນສ່ວນຕົວ">
           <a-descriptions :column="1" bordered size="middle">
-            <a-descriptions-item label="ຊື່">{{ authStore.user?.name }}</a-descriptions-item>
+            <a-descriptions-item label="ຊື່">{{ authStore.fullName }}</a-descriptions-item>
             <a-descriptions-item label="ອີເມວ">{{ authStore.user?.email }}</a-descriptions-item>
           </a-descriptions>
         </a-tab-pane>
@@ -61,13 +67,13 @@
       :footer="null"
     >
       <a-descriptions v-if="selectedBooking" :column="1" bordered size="middle">
-        <a-descriptions-item label="ລະຫັດການຈອງ">{{ selectedBooking?.id || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="ຊື່ບໍລິການ">{{ selectedBooking?.serviceName || 'Service' }}</a-descriptions-item>
-        <a-descriptions-item label="ວັນທີ">{{ selectedBooking?.date || '-' }}</a-descriptions-item>
-        <a-descriptions-item :label="selectedBooking?.type === 'transport' ? 'ຈຳນວນບ່ອນນັ່ງ' : 'ຈຳນວນຄົນ'">
-          {{ selectedBooking?.quantity || '-' }}
+        <a-descriptions-item label="ລະຫັດການຈອງ">{{ selectedBooking.bookingReference }}</a-descriptions-item>
+        <a-descriptions-item label="ຊື່ບໍລິການ">{{ firstItem(selectedBooking)?.inventoryPricing?.service?.name || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="ວັນທີ">{{ formatDate(firstItem(selectedBooking)?.inventoryPricing?.date) }}</a-descriptions-item>
+        <a-descriptions-item label="ຈຳນວນ (ຫ້ອງ/ບ່ອນນັ່ງ)">
+          {{ totalUnits(selectedBooking) }}
         </a-descriptions-item>
-        <a-descriptions-item label="ລາຄາລວມ">{{ formatPrice(selectedBooking?.totalPrice) }} ກີບ</a-descriptions-item>
+        <a-descriptions-item label="ລາຄາລວມ">{{ formatPrice(selectedBooking.totalPrice) }} ກີບ</a-descriptions-item>
         <a-descriptions-item label="ສະຖານະ">
           <a-tag :color="statusTagMeta(selectedBooking.status).color">
             {{ statusTagMeta(selectedBooking.status).text }}
@@ -99,26 +105,27 @@ definePageMeta({
 const authStore = useAuthStore()
 const bookingStore = useBookingStore()
 
-const userInitial = computed(() => authStore.user?.name?.charAt(0).toUpperCase() ?? '?')
+const userInitial = computed(() => authStore.fullName?.charAt(0).toUpperCase() ?? '?')
 
 onMounted(() => {
   bookingStore.fetchBookingHistory()
 })
 
 const historyColumns = [
-  { title: 'ລະຫັດການຈອງ', dataIndex: 'id', key: 'id' },
-  { title: 'ຊື່ບໍລິການ', dataIndex: 'serviceName', key: 'serviceName' },
-  { title: 'ວັນທີ', dataIndex: 'date', key: 'date' },
+  { title: 'ລະຫັດການຈອງ', dataIndex: 'bookingReference', key: 'bookingReference' },
+  { title: 'ຊື່ບໍລິການ', key: 'serviceName' },
+  { title: 'ວັນທີ', key: 'date' },
   { title: 'ລາຄາລວມ', dataIndex: 'totalPrice', key: 'totalPrice' },
   { title: 'ສະຖານະ', dataIndex: 'status', key: 'status' },
   { title: 'ຈັດການ', key: 'action' }
 ]
 
-// ແປ status code ຈາກ backend ເປັນສີ+ຂໍ້ຄວາມ Lao ສຳລັບ a-tag
+// ແປ status ຈາກ backend (Prisma BookingStatus: PENDING/CONFIRMED/CANCELLED/COMPLETED) ເປັນສີ+ຂໍ້ຄວາມ Lao
 const STATUS_TAG_MAP = {
-  pending: { color: 'warning', text: 'ລໍຖ້າຊຳລະ' },
-  completed: { color: 'success', text: 'ສຳເລັດ' },
-  cancelled: { color: 'error', text: 'ຍົກເລີກ' }
+  PENDING: { color: 'warning', text: 'ລໍຖ້າຊຳລະ' },
+  CONFIRMED: { color: 'processing', text: 'ຢືນຢັນແລ້ວ' },
+  COMPLETED: { color: 'success', text: 'ສຳເລັດ' },
+  CANCELLED: { color: 'error', text: 'ຍົກເລີກ' }
 }
 
 function statusTagMeta(status) {
@@ -127,6 +134,22 @@ function statusTagMeta(status) {
 
 function formatPrice(value) {
   return new Intl.NumberFormat('lo-LA').format(value || 0)
+}
+
+function formatDate(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('lo-LA')
+}
+
+// GET /bookings/me nests everything under items[].inventoryPricing.service --
+// a booking can have multiple items, but the summary table/modal here only
+// surfaces the first one.
+function firstItem(booking) {
+  return booking?.items?.[0]
+}
+
+function totalUnits(booking) {
+  return booking?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0
 }
 
 function handleLogout() {

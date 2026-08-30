@@ -24,7 +24,42 @@ enum ServiceType {
   HOTEL
   FLIGHT
   TRAIN
-  PACKAGE
+  BUS
+  TOUR
+  CAR_RENTAL
+  PACKAGE // legacy/generic -- not targeted by any vertical controller below
+}
+
+enum HotelPropertyType {
+  HOTEL
+  RESORT
+  VILLA
+  GUESTHOUSE
+}
+
+enum SeatClass {
+  ECONOMY
+  BUSINESS
+  FIRST
+}
+
+enum TourDifficulty {
+  EASY
+  MODERATE
+  HARD
+}
+
+enum VehicleType {
+  SEDAN
+  SUV
+  VAN
+  PICKUP
+  MOTORBIKE
+}
+
+enum TransmissionType {
+  MANUAL
+  AUTOMATIC
 }
 
 enum BookingStatus {
@@ -93,6 +128,78 @@ model Service {
 
   supplier    Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   inventory   InventoryPricing[]
+
+  // Exactly one of these is populated depending on `type` -- enforced by
+  // each vertical's create-service flow (HotelsService/TransportService/...),
+  // not by a DB constraint, since Prisma has no native "exactly one of these
+  // relations" check across separate 1:1 tables.
+  hotelDetails     HotelDetails?
+  transportDetails TransportDetails?
+  tourDetails      TourDetails?
+  carRentalDetails CarRentalDetails?
+}
+
+// 3a. HotelDetails: attributes specific to ServiceType.HOTEL, split out of
+// Service instead of added as nullable columns there so FLIGHT/TOUR/etc
+// services never carry hotel-only fields, and so each vertical's Prisma
+// filter (see AvailabilitySearchService) targets its own narrow table.
+// Nightly price/availability still lives on the shared InventoryPricing --
+// not duplicated here.
+model HotelDetails {
+  serviceId    String            @id
+  starRating   Int               @db.SmallInt
+  propertyType HotelPropertyType
+  amenities    String[] // Postgres text[] -- queried with `hasEvery`/`hasSome`
+
+  service      Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([starRating])
+  @@index([propertyType])
+}
+
+// 3b. TransportDetails: attributes specific to FLIGHT/TRAIN/BUS. One Service
+// row = one sellable leg+class (e.g. "VTE-LPQ VIP Bus, Business" is its own
+// Service/InventoryPricing pair), matching how transport ticket SKUs are
+// actually priced -- not a single service with per-class sub-pricing.
+model TransportDetails {
+  serviceId   String    @id
+  origin      String
+  destination String
+  seatClass   SeatClass
+
+  service     Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([origin, destination])
+  @@index([seatClass])
+}
+
+// 3c. TourDetails: attributes specific to ServiceType.TOUR.
+model TourDetails {
+  serviceId    String         @id
+  durationDays Int
+  category     String
+  difficulty   TourDifficulty
+  minGroupSize Int
+  maxGroupSize Int
+
+  service      Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([difficulty])
+}
+
+// 3d. CarRentalDetails: attributes specific to ServiceType.CAR_RENTAL.
+// Daily rate isn't a column here -- it's InventoryPricing.price for the
+// pickup date, same mechanism hotels use for nightly price.
+model CarRentalDetails {
+  serviceId       String            @id
+  vehicleType     VehicleType
+  transmission    TransmissionType
+  seatingCapacity Int
+
+  service         Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleType])
 }
 
 // 4. InventoryPricing: ຈັດການຈຳນວນວ່າງ ແລະ ລາຄາລາຍວັນ (ຫົວໃຈຫຼັກຂອງ OTA)

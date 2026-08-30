@@ -1,11 +1,16 @@
 import axios from 'axios';
 
-const TOKEN_STORAGE_KEY = 'auth_token';
-
 export default defineNuxtPlugin((nuxtApp) => {
+  const config = useRuntimeConfig();
+
   // 1. ສ້າງ Instance ສຳລັບ UniBooking API
   const unibookingApi = axios.create({
-    baseURL: process.env.API_URL || 'https://api.unibooking.la/v1',
+    baseURL: config.public.apiBase,
+    // Backend auth is an httpOnly cookie (see AuthController.setAuthCookie),
+    // not a bearer token -- withCredentials makes the browser attach/accept
+    // that cookie on cross-origin requests (frontend :3000, API :3001).
+    // Paired with backend's app.enableCors({ credentials: true, origin: [...] }).
+    withCredentials: true,
     headers: {
       common: {
         Accept: 'application/json, text/plain, */*'
@@ -13,19 +18,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
   });
 
-  // 2. ດັກຈັບກ່ອນຍິງ Request ໄປຫາ Server: ຕິດ JWT ຈາກ localStorage ໃສ່ Authorization header
-  unibookingApi.interceptors.request.use((config) => {
-    const token = process.client ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  }, (error) => {
-    return Promise.reject(error);
-  });
-
-  // 3. ດັກຈັບ Response ແລະ Error
+  // 2. ດັກຈັບ Response ແລະ Error (ບໍ່ຕ້ອງຕິດ Authorization header ອີກຕໍ່ໄປ -- cookie ໄປເອງອັດຕະໂນມັດ)
   unibookingApi.interceptors.response.use(
     (response) => {
       return response;
@@ -39,9 +32,10 @@ export default defineNuxtPlugin((nuxtApp) => {
         if (status === 401) {
           errorMessage = 'ເຊດຊັນຂອງທ່ານໝົດອາຍຸແລ້ວ ກະລຸນາລັອກອິນໃໝ່.';
 
-          // Token ໝົດອາຍຸ/ບໍ່ຖືກຕ້ອງ: ລ້າງ Session ແລ້ວສົ່ງກັບໄປໜ້າ Login
+          // Cookie ໝົດອາຍຸ/ບໍ່ຖືກຕ້ອງ: ສົ່ງກັບໄປໜ້າ Login
+          // (ບໍ່ມີ token ໃນ localStorage ໃຫ້ລ້າງອີກຕໍ່ໄປ -- cookie ຖືກ server ຈັດການ;
+          // ການ redirect ແບບ full page load ນີ້ຈະລ້າງ Pinia state ໄປໃນຕົວ)
           if (process.client) {
-            localStorage.removeItem(TOKEN_STORAGE_KEY);
             window.location.href = '/login';
           }
         }
@@ -64,7 +58,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
   );
 
-  // 4. ສົ່ງອອກໃຫ້ໃຊ້ງານໄດ້ທົ່ວແອັບພລິເຄຊັນ (ເອີ້ນໃຊ້ຜ່ານ ໂຕແປ $unibookingApi)
+  // 3. ສົ່ງອອກໃຫ້ໃຊ້ງານໄດ້ທົ່ວແອັບພລິເຄຊັນ (ເອີ້ນໃຊ້ຜ່ານ ໂຕແປ $unibookingApi)
   return {
     provide: {
       unibookingApi
