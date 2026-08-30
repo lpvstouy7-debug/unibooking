@@ -16,7 +16,7 @@
 
           <a-col :xs="24" :sm="12" :md="5">
             <label class="field-label">ຈຳນວນຄົນ</label>
-            <a-select v-model:value="hotelSearch.guests" size="large" style="width: 100%">
+            <a-select id="hotel-search-guests" v-model:value="hotelSearch.guests" size="large" style="width: 100%">
               <a-select-option v-for="n in 6" :key="n" :value="n">{{ n }} ຄົນ</a-select-option>
             </a-select>
           </a-col>
@@ -160,17 +160,19 @@ function handleTransportSearch() {
 
 /* Primary "ຄົ້ນຫາ" search button */
 .search-form :deep(.ant-btn-primary) {
-  background: #22d3ee !important;
-  border-color: #22d3ee !important;
-  color: #0a0a0a !important;
+  background: #d4af37 !important;
+  border-color: #d4af37 !important;
+  color: #14294f !important;
   font-weight: 700;
   text-shadow: none;
+  transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
 }
 
 .search-form :deep(.ant-btn-primary:hover) {
-  background: #67e8f9 !important;
-  border-color: #67e8f9 !important;
-  color: #0a0a0a !important;
+  background: #e0c05c !important;
+  border-color: #e0c05c !important;
+  color: #14294f !important;
+  transform: scale(1.02);
 }
 
 .field-label {

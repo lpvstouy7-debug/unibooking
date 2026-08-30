@@ -154,6 +154,34 @@
           <div class="footer__social">
             <a href="#" class="footer__social-icon" aria-label="Facebook"><FacebookFilled /></a>
             <a href="#" class="footer__social-icon" aria-label="Youtube"><YoutubeFilled /></a>
+
+            <!-- Magic Social Share: click the gold FAB to fan the 5 platform
+                 icons out into an arc above it (see shareLinks in the script). -->
+            <div ref="magicShareRef" class="magic-share" :class="{ 'is-open': isShareOpen }">
+              <button
+                type="button"
+                class="magic-share__toggle"
+                :aria-expanded="isShareOpen"
+                aria-label="Share UniBooking"
+                @click="isShareOpen = !isShareOpen"
+              >
+                <component :is="isShareOpen ? CloseOutlined : ShareAltOutlined" />
+              </button>
+
+              <a
+                v-for="item in shareLinks"
+                :key="item.label"
+                :href="item.href"
+                :aria-label="item.label"
+                class="magic-share__item"
+                :style="{ '--dx': `${item.dx}px`, '--dy': `${item.dy}px` }"
+                target="_blank"
+                rel="noopener noreferrer"
+                :tabindex="isShareOpen ? 0 : -1"
+              >
+                <component :is="item.icon" />
+              </a>
+            </div>
           </div>
         </div>
 
@@ -215,9 +243,21 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { MenuOutlined, GlobalOutlined, FacebookFilled, YoutubeFilled } from '@ant-design/icons-vue'
+import {
+  MenuOutlined,
+  GlobalOutlined,
+  FacebookFilled,
+  YoutubeFilled,
+  ShareAltOutlined,
+  CloseOutlined,
+  SendOutlined,
+  WhatsAppOutlined,
+  InstagramFilled,
+  SoundFilled,
+  MessageFilled
+} from '@ant-design/icons-vue'
 import { useAuthStore } from '~/stores/auth'
 
 const route = useRoute()
@@ -228,6 +268,47 @@ const authStore = useAuthStore()
 const userInitial = computed(() => authStore.user?.name?.charAt(0).toUpperCase() ?? '?')
 
 const isDrawerOpen = ref(false)
+
+// Magic Social Share menu: a gold FAB in the footer's social row that fans 5
+// platform icons out into an upward arc on click (see .magic-share__item's
+// --dx/--dy in the CSS, computed here so the geometry lives in one place).
+// Telegram/TikTok/Line have no dedicated antd icon, so SendOutlined,
+// SoundFilled, and MessageFilled stand in for them.
+const isShareOpen = ref(false)
+const magicShareRef = ref(null)
+
+const SHARE_ARC_RADIUS = 90 // px
+const SHARE_ARC_ANGLES = [-80, -40, 0, 40, 80] // degrees from straight up
+
+function arcOffset(angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180
+  return {
+    dx: SHARE_ARC_RADIUS * Math.sin(rad),
+    dy: -SHARE_ARC_RADIUS * Math.cos(rad)
+  }
+}
+
+const shareLinks = [
+  { label: 'Telegram', icon: SendOutlined, href: '#' },
+  { label: 'WhatsApp', icon: WhatsAppOutlined, href: '#' },
+  { label: 'Instagram', icon: InstagramFilled, href: '#' },
+  { label: 'TikTok', icon: SoundFilled, href: '#' },
+  { label: 'Line', icon: MessageFilled, href: '#' }
+].map((item, index) => ({ ...item, ...arcOffset(SHARE_ARC_ANGLES[index]) }))
+
+function handleShareOutsideClick(event) {
+  if (isShareOpen.value && magicShareRef.value && !magicShareRef.value.contains(event.target)) {
+    isShareOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleShareOutsideClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleShareOutsideClick)
+})
 
 const currentLang = ref('Lao')
 
@@ -306,7 +387,12 @@ function handleDrawerMenuClick({ key }) {
    nav centered, lang + login/user grouped far right (see .site-header__actions) */
 .site-header {
   width: 100%;
-  background: transparent;
+  /* Same dark navy as .site-footer below -- the site's actual "dark blue"
+     brand color. Was `transparent`, which worked by accident on the
+     homepage (hero-mode hides this bar entirely on desktop; see below) but
+     left it invisible-on-white for every other page: white logo/nav text
+     over nothing but the page's own light background. */
+  background: #14294f;
   height: 64px;
   line-height: 64px;
   border-bottom: 1px solid rgba(197, 160, 89, 0.15);
@@ -314,7 +400,13 @@ function handleDrawerMenuClick({ key }) {
 
 /* Pages with their own integrated hero navbar (see site-header--hero-mode
    binding above) hide this bar on desktop, where the hero navbar takes over;
-   it stays visible on mobile since it's still the only hamburger-drawer entry point. */
+   it stays visible on mobile since it's still the only hamburger-drawer entry
+   point. There, it stays transparent (overriding .site-header's new solid
+   background above) so the hero photo shows through behind it, same as today. */
+.site-header--hero-mode {
+  background: transparent;
+}
+
 @media (min-width: 768px) {
   .site-header--hero-mode {
     display: none;
@@ -438,6 +530,7 @@ function handleDrawerMenuClick({ key }) {
    Footer: 5-column luxury layout on the dark green/gold theme
    ============================================================ */
 .site-footer {
+  position: relative;
   flex-shrink: 0;
   background: #14294f;
   border-top: 1px solid rgba(197, 160, 89, 0.15);
@@ -445,9 +538,42 @@ function handleDrawerMenuClick({ key }) {
   padding: 64px 0 0;
   height: auto;
   line-height: 1.6;
+  overflow: hidden;
+}
+
+/* Ambient background glow: a slow-breathing gold radial light behind the
+   footer content, purely atmospheric (no interaction, no layout impact). */
+.site-footer::before {
+  content: '';
+  position: absolute;
+  top: -15%;
+  left: 50%;
+  width: 65%;
+  max-width: 820px;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.04) 45%, transparent 72%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+  animation: footer-ambient-glow 8s ease-in-out infinite;
+}
+
+@keyframes footer-ambient-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.08);
+  }
 }
 
 .footer__container {
+  position: relative;
+  z-index: 1;
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
@@ -504,6 +630,155 @@ function handleDrawerMenuClick({ key }) {
   color: #0a0a0a;
 }
 
+/* Magic Social Share: a gold FAB that fans 5 platform icons out into an arc
+   above it (see --dx/--dy set per-item in the template, computed in the
+   script). Sits inline with the Facebook/Youtube icons in .footer__social. */
+.magic-share {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.magic-share__toggle {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(212, 175, 55, 0.06));
+  color: #d4af37;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+  animation: magic-share-heartbeat 2.6s ease-in-out infinite;
+}
+
+.magic-share__toggle:hover {
+  background: #d4af37;
+  color: #0b192c;
+}
+
+.magic-share.is-open .magic-share__toggle {
+  animation: none;
+  background: #d4af37;
+  color: #0b192c;
+  transform: rotate(90deg);
+}
+
+/* Heartbeat "lub-dub" pulse on the closed FAB, so it keeps drawing the eye
+   without ever looking busy: two quick beats of scale + gold glow, then a
+   longer rest before the cycle repeats. */
+@keyframes magic-share-heartbeat {
+  0%,
+  38%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0), 0 0 6px rgba(212, 175, 55, 0.15);
+  }
+  12% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(212, 175, 55, 0.16), 0 0 16px rgba(212, 175, 55, 0.5);
+  }
+  24% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1), 0 0 10px rgba(212, 175, 55, 0.35);
+  }
+  32% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 8px rgba(212, 175, 55, 0), 0 0 18px rgba(212, 175, 55, 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magic-share__toggle {
+    animation: none;
+  }
+
+  .site-footer::before {
+    animation: none;
+  }
+}
+
+/* Each item starts collapsed and hidden at the toggle's own center, then
+   pops out to its own --dx/--dy offset with a staggered delay when
+   .magic-share gains .is-open — see the nth-child delays below. */
+.magic-share__item {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(251, 249, 242, 0.25);
+  background: #0b192c;
+  color: #fbf9f2;
+  font-size: 15px;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.magic-share__item:hover {
+  background: #d4af37;
+  border-color: #d4af37;
+  color: #0b192c;
+}
+
+.magic-share.is-open .magic-share__item {
+  animation: magic-share-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Overshoots past its resting arc position before settling, for a springy,
+   responsive-feeling pop rather than a flat ease-out. Closing reverses via
+   the plain transition on .magic-share__item itself (below). */
+@keyframes magic-share-pop {
+  0% {
+    transform: translate(-50%, -50%) scale(0) rotate(-20deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translate(calc(-50% + var(--dx) * 1.1), calc(-50% + var(--dy) * 1.1)) scale(1.15) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.magic-share.is-open .magic-share__item:nth-child(2) {
+  animation-delay: 0s;
+}
+
+.magic-share.is-open .magic-share__item:nth-child(3) {
+  animation-delay: 0.05s;
+}
+
+.magic-share.is-open .magic-share__item:nth-child(4) {
+  animation-delay: 0.1s;
+}
+
+.magic-share.is-open .magic-share__item:nth-child(5) {
+  animation-delay: 0.15s;
+}
+
+.magic-share.is-open .magic-share__item:nth-child(6) {
+  animation-delay: 0.2s;
+}
+
 .footer__heading {
   font-size: 14px;
   font-weight: 700;
@@ -557,13 +832,28 @@ function handleDrawerMenuClick({ key }) {
   display: inline-flex;
   align-items: center;
   padding: 6px 14px;
-  border-radius: 6px;
-  background: rgba(251, 249, 242, 0.08);
+  border-radius: 8px;
+  background: rgba(251, 249, 242, 0.06);
   border: 1px solid rgba(251, 249, 242, 0.15);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.35),
+    -2px -2px 6px rgba(255, 255, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   color: #fbf9f2;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.5px;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.footer__payment-badge:hover {
+  transform: translateY(-3px);
+  border-color: rgba(212, 175, 55, 0.55);
+  box-shadow:
+    4px 8px 16px rgba(0, 0, 0, 0.4),
+    0 0 14px rgba(212, 175, 55, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .footer__copyright {

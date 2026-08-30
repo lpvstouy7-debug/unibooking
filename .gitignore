@@ -9,6 +9,9 @@ dist
 # Node dependencies
 node_modules
 
+# User-uploaded files (see unibooking-backend/src/uploads)
+unibooking-backend/uploads
+
 # Logs
 logs
 *.log

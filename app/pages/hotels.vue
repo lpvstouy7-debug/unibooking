@@ -48,7 +48,7 @@
       <a-col :xs="24" :md="17" :lg="18">
         <div class="results-header">
           <h2 class="results-header__count">ພົບ {{ filteredHotels.length }} ໂຮງແຮມໃນວຽງຈັນ</h2>
-          <a-select v-model:value="sortBy" size="large" class="results-header__sort">
+          <a-select id="hotels-sort-by" v-model:value="sortBy" size="large" class="results-header__sort">
             <a-select-option value="price-asc">ລາຄາ: ຕ່ຳ ຫາ ສູງ</a-select-option>
             <a-select-option value="rating-desc">ຄະແນນສູງສຸດ</a-select-option>
           </a-select>

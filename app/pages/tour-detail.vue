@@ -1,6 +1,15 @@
 <template>
   <div class="tour-detail">
     <div class="container">
+      <!-- Featured category banner: set by the query param a Tour Categories
+           card (see tour-categories-grid in index.vue) links here with. Not
+           an <h1> -- the tour's own name below already is one, and a page
+           should have exactly one. -->
+      <section class="featured-category">
+        <span class="featured-category__eyebrow">ປະເພດທົວ ທີ່ພົ້ນເດັ່ນ</span>
+        <p class="featured-category__title">{{ featuredCategory }}</p>
+      </section>
+
       <!-- Hero gallery: 1 large main image + 2 stacked side images -->
       <section class="gallery">
         <div class="gallery-main">
@@ -87,6 +96,20 @@
               <span>{{ item }}</span>
             </li>
           </ul>
+
+          <h2 class="detail-section-title">ຮູບພາບເພີ່ມເຕີມ</h2>
+          <div class="photo-marquee">
+            <ul class="photo-marquee__track photo-marquee__track--a">
+              <li v-for="(src, i) in marqueeRowA" :key="'a' + i" class="photo-marquee__tile">
+                <img :src="src" alt="" loading="lazy">
+              </li>
+            </ul>
+            <ul class="photo-marquee__track photo-marquee__track--b">
+              <li v-for="(src, i) in marqueeRowB" :key="'b' + i" class="photo-marquee__tile">
+                <img :src="src" alt="" loading="lazy">
+              </li>
+            </ul>
+          </div>
         </div>
 
         <!-- Right column: sticky booking widget -->
@@ -105,6 +128,7 @@
 
           <label class="booking-widget__label">ຈຳນວນແຂກ</label>
           <a-select
+            id="tour-detail-guest-count"
             v-model:value="guestCount"
             class="booking-widget__input"
             :options="guestOptions"
@@ -120,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import {
   EnvironmentOutlined,
   StarFilled,
@@ -129,6 +153,16 @@ import {
   CheckCircleFilled,
   CloseOutlined
 } from '@ant-design/icons-vue'
+
+// useRoute() is a Nuxt 3 auto-import -- no explicit import needed, same as
+// definePageMeta() elsewhere in this app.
+const route = useRoute()
+
+// Populated from the ?category= query param a Tour Categories card sets
+// when linking here (see tour-categories-grid in index.vue). Falls back to
+// generic copy for any other entry point into this page (e.g. the Best of
+// Laos cards, which don't set this param).
+const featuredCategory = computed(() => route.query.category || 'ທົວແນະນຳ')
 
 const isMapModalOpen = ref(false)
 
@@ -153,6 +187,12 @@ const inclusions = [
   'ອາຫານທ່ຽງ ແລະ ນ້ຳດື່ມ',
   'ປະກັນໄພການເດີນທາງ'
 ]
+
+// Each row is duplicated so the CSS keyframe (translateX to -50%) loops seamlessly
+const marqueeA = ['/images/Wat-Phu-Laos.jpg', '/images/khonephapheng.jpg', '/images/Tardkaungse.png', '/images/patuxay.jpeg']
+const marqueeB = ['/images/Muaengngoy.jpg', '/images/phathartlaung.jpeg', '/images/thonghaiheen.jpg', '/images/Muaengfuaeng.webp']
+const marqueeRowA = [...marqueeA, ...marqueeA]
+const marqueeRowB = [...marqueeB, ...marqueeB]
 </script>
 
 <style scoped>
@@ -167,6 +207,33 @@ const inclusions = [
   margin: 0 auto;
   padding: 0 24px;
   width: 100%;
+}
+
+/* ============================================================
+   Featured category banner
+   ============================================================ */
+.featured-category {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.featured-category__eyebrow {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #1a3c28;
+  opacity: 0.55;
+  margin-bottom: 10px;
+}
+
+.featured-category__title {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: #c5a059;
 }
 
 /* ============================================================
@@ -424,6 +491,74 @@ const inclusions = [
   color: #10b981;
   margin-top: 3px;
   flex-shrink: 0;
+}
+
+/* ============================================================
+   Photo marquee (dual opposite-direction scrolling rows)
+   ============================================================ */
+.photo-marquee {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  margin-bottom: 40px;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.photo-marquee__track {
+  list-style: none;
+  display: flex;
+  gap: 14px;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+}
+
+.photo-marquee__track--a {
+  animation: photo-marquee-run 26s linear infinite;
+}
+
+.photo-marquee__track--b {
+  animation: photo-marquee-run 26s linear infinite reverse;
+}
+
+.photo-marquee:hover .photo-marquee__track,
+.photo-marquee:focus-within .photo-marquee__track {
+  animation-play-state: paused;
+}
+
+.photo-marquee__tile {
+  flex: none;
+  width: 200px;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #eee7d6;
+  box-shadow: 0 6px 18px rgba(26, 60, 40, 0.12);
+}
+
+.photo-marquee__tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@keyframes photo-marquee-run {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-marquee__track {
+    animation: none;
+  }
 }
 
 /* ============================================================

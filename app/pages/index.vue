@@ -31,15 +31,23 @@
               </a-dropdown>
             </ClientOnly>
 
-            <a href="#services" class="hero-navbar__btn">Explore</a>
+            <!-- Magic Border Glow: an animated gold/cyan conic-gradient ring
+                 (see MagicBorderGlow.vue) replaces the buttons' old static
+                 white border, so the two pill CTAs stand out against the
+                 hero photo without needing a filled background. -->
+            <MagicBorderGlow palette="luxury" radius="999px" border-width="1.5px" surface="rgba(11, 25, 44, 0.35)">
+              <a href="#services" class="hero-navbar__btn">Explore</a>
+            </MagicBorderGlow>
 
             <ClientOnly>
-              <NuxtLink v-if="!authStore.isAuthenticated" to="/login" class="hero-navbar__btn">
-                Login
-              </NuxtLink>
-              <NuxtLink v-else to="/profile" class="hero-navbar__btn">
-                {{ authStore.user?.name }}
-              </NuxtLink>
+              <MagicBorderGlow palette="luxury" radius="999px" border-width="1.5px" surface="rgba(11, 25, 44, 0.35)">
+                <NuxtLink v-if="!authStore.isAuthenticated" to="/login" class="hero-navbar__btn">
+                  Login
+                </NuxtLink>
+                <NuxtLink v-else to="/profile" class="hero-navbar__btn">
+                  {{ authStore.user?.name }}
+                </NuxtLink>
+              </MagicBorderGlow>
             </ClientOnly>
           </div>
         </header>
@@ -55,7 +63,12 @@
           </div>
         </div>
 
-        <div class="hero-carousel" aria-label="Popular destinations">
+        <div
+          class="hero-carousel"
+          aria-label="Popular destinations"
+          @mouseenter="stopHeroAutoplay"
+          @mouseleave="startHeroAutoplay"
+        >
           <div class="hero-carousel__inner">
             <ClientOnly>
               <Swiper
@@ -107,31 +120,6 @@
       <BookingSearchForm />
     </div>
 
-    <!-- Services grid -->
-    <section class="services-section">
-      <div class="container services-section__inner">
-        <div class="services-header">
-          <a-tag class="services-header__badge">ບໍລິການຂອງພວກເຮົາ</a-tag>
-          <h2 class="services-header__title">ເລືອກບໍລິການທ່ອງທ່ຽວ</h2>
-          <p class="services-header__subtitle">
-            ຄົ້ນພົບບໍລິການທີ່ຫຼາກຫຼາຍຂອງພວກເຮົາທີ່ອອກແບບມາເພື່ອຕອບສະໜອງຄວາມຕ້ອງການເດີນທາງຂອງທ່ານ
-          </p>
-        </div>
-
-        <a-row :gutter="[24, 24]">
-          <a-col v-for="service in services" :key="service.title" :xs="24" :sm="12" :lg="6">
-            <div class="service-card">
-              <div class="service-card__icon">
-                <component :is="service.icon" />
-              </div>
-              <h3 class="service-card__title">{{ service.title }}</h3>
-              <p class="service-card__desc">{{ service.description }}</p>
-            </div>
-          </a-col>
-        </a-row>
-      </div>
-    </section>
-
     <!-- Modular Travel Solutions: luxury connected node network -->
     <section class="modular-section">
       <div class="container modular-section__inner">
@@ -146,59 +134,60 @@
           </p>
         </div>
 
-        <!-- Right: the realistic traveler circuit, built as a sequential chain
-             reaction — a short glowing "data packet" comet travels along one
-             segment and vanishes the instant it reaches its node, then the
-             next segment's comet fires, and so on all the way from Airport to
-             Entertainment and back across to Hotel. Each segment/node pair
-             below has its own hardcoded timing (see flowLine--* / nodeGlow--*
-             keyframes) rather than a shared delay, so every element can
-             independently fire on schedule; the nodes stay lit afterward as a
-             persistent "connected" trail while the comets themselves are
-             transient. -->
-        <div class="orbit-diagram">
-          <div class="orbit-diagram__glow" />
+        <!-- Right: a radial hub-and-spoke ecosystem menu (adapted from
+             CodeFronts' "Mission Hub" circular menu, MIT licensed) — six
+             clickable modules in orbit (see ecosystemModules in the
+             script) around a live center that shows the selected module's
+             headline stat. Each module's angle is computed purely in CSS
+             from its index (--i) and count (--n); clicking one drives
+             selectedModuleId, and the center content swaps with a short
+             fade/scale transition. -->
+        <div class="ecosystem-container">
+          <div class="ecosystem-glow" />
 
-          <svg class="orbit-diagram__ring" viewBox="0 0 100 100">
-            <!-- Faint permanent track: the same 6 segments, always visible at
-                 low opacity, giving the comets below a visible "rail" so the
-                 full circuit shape reads even while nothing is flowing. -->
-            <line class="circuit-track" :x1="AIRPORT.x" :y1="AIRPORT.y" :x2="TRANSFERS.x" :y2="TRANSFERS.y" />
-            <line class="circuit-track" :x1="TRANSFERS.x" :y1="TRANSFERS.y" :x2="HOTEL.x" :y2="HOTEL.y" />
-            <line class="circuit-track" :x1="HOTEL.x" :y1="HOTEL.y" :x2="RESTAURANT.x" :y2="RESTAURANT.y" />
-            <line class="circuit-track" :x1="RESTAURANT.x" :y1="RESTAURANT.y" :x2="ATTRACTIONS.x" :y2="ATTRACTIONS.y" />
-            <line class="circuit-track" :x1="ATTRACTIONS.x" :y1="ATTRACTIONS.y" :x2="ENTERTAINMENT.x" :y2="ENTERTAINMENT.y" />
-            <path class="circuit-track" :d="returnPathD" fill="none" />
+          <fieldset class="ecosystem-fieldset" :style="{ '--n': ecosystemModules.length }">
+            <legend class="ecosystem-sr">ເລືອກໝວດໝູ່ລະບົບນິເວດການທ່ອງທ່ຽວ</legend>
 
-            <!-- pathLength="1" normalizes every segment (regardless of its
-                 real geometric length) to a 0-1 range. stroke-dasharray is a
-                 short 0.1-unit dash followed by a 1-unit gap — a single short
-                 comet with nothing else in the pattern — and each segment
-                 animates stroke-dashoffset from 1 (comet parked just before
-                 the segment's start, invisible) to -1 (comet has slid a full
-                 unit past the segment's end, also invisible): the only place
-                 it's ever actually on-path is mid-animation, sliding across. -->
-            <line class="circuit-line circuit-line--1" :x1="AIRPORT.x" :y1="AIRPORT.y" :x2="TRANSFERS.x" :y2="TRANSFERS.y" pathLength="1" />
-            <line class="circuit-line circuit-line--2" :x1="TRANSFERS.x" :y1="TRANSFERS.y" :x2="HOTEL.x" :y2="HOTEL.y" pathLength="1" />
-            <line class="circuit-line circuit-line--3" :x1="HOTEL.x" :y1="HOTEL.y" :x2="RESTAURANT.x" :y2="RESTAURANT.y" pathLength="1" />
-            <line class="circuit-line circuit-line--4" :x1="RESTAURANT.x" :y1="RESTAURANT.y" :x2="ATTRACTIONS.x" :y2="ATTRACTIONS.y" pathLength="1" />
-            <line class="circuit-line circuit-line--5" :x1="ATTRACTIONS.x" :y1="ATTRACTIONS.y" :x2="ENTERTAINMENT.x" :y2="ENTERTAINMENT.y" pathLength="1" />
-            <!-- Segment 6: the realistic "return to sleep" leg — a gentle bow
-                 back across the circle to Hotel instead of a straight chord
-                 stabbing through the center glow. -->
-            <path class="circuit-line circuit-line--6" :d="returnPathD" fill="none" pathLength="1" />
-          </svg>
+            <div class="ecosystem-space">
+              <span
+                v-for="(module, index) in ecosystemModules"
+                :key="`spoke-${module.id}`"
+                class="ecosystem-spoke"
+                :class="{ 'is-active': module.id === selectedModuleId }"
+                :style="{ '--i': index }"
+                aria-hidden="true"
+              />
 
-          <div
-            v-for="node in orbitNodes"
-            :key="node.label"
-            class="orbit-node"
-            :class="`orbit-node--${node.id}`"
-            :style="{ top: node.top, left: node.left }"
-          >
-            <component :is="node.icon" class="orbit-node__icon" />
-            <span class="orbit-node__label">{{ node.label }}</span>
-          </div>
+              <div
+                v-for="(module, index) in ecosystemModules"
+                :key="module.id"
+                class="ecosystem-module"
+                :style="{ '--i': index }"
+              >
+                <input
+                  :id="`ecosystem-${module.id}`"
+                  v-model="selectedModuleId"
+                  type="radio"
+                  name="ecosystem-module"
+                  :value="module.id"
+                >
+                <label :for="`ecosystem-${module.id}`">
+                  <component :is="module.icon" class="ecosystem-icon" />
+                  <span class="ecosystem-label">{{ module.label }}</span>
+                </label>
+              </div>
+
+              <div class="ecosystem-core">
+                <Transition name="ecosystem-core-fade" mode="out-in">
+                  <div :key="activeModule.id" class="ecosystem-core__content">
+                    <em class="ecosystem-core__label">{{ activeModule.label }}</em>
+                    <strong class="ecosystem-core__stat">{{ activeModule.stat }}</strong>
+                    <span class="ecosystem-core__delta">{{ activeModule.delta }}</span>
+                  </div>
+                </Transition>
+              </div>
+            </div>
+          </fieldset>
         </div>
       </div>
     </section>
@@ -217,10 +206,22 @@
           </p>
         </div>
 
-        <a-row :gutter="[24, 24]">
+        <a-row v-if="isServicesLoading" :gutter="[24, 24]" role="status" aria-busy="true">
+          <span class="services-sr">ກຳລັງໂຫຼດບໍລິການ...</span>
+          <a-col v-for="(tint, i) in serviceSkeletonTints" :key="i" :xs="24" :sm="12" :lg="8">
+            <div class="grid-card grid-card--skeleton" aria-hidden="true">
+              <div class="services-sk services-sk--icon" :style="{ '--sk-tint': tint }" />
+              <div class="services-sk services-sk--title" :style="{ '--sk-tint': tint }" />
+              <div class="services-sk services-sk--desc" :style="{ '--sk-tint': tint }" />
+              <div class="services-sk services-sk--desc services-sk--desc-short" :style="{ '--sk-tint': tint }" />
+            </div>
+          </a-col>
+        </a-row>
+
+        <a-row v-else :gutter="[24, 24]">
           <a-col v-for="item in serviceGridItems" :key="item.title" :xs="24" :sm="12" :lg="8">
             <div class="grid-card">
-              <div class="grid-card__icon" :style="{ background: item.color }">
+              <div class="grid-card__icon">
                 <component :is="item.icon" class="grid-card__icon-glyph" />
               </div>
               <h3 class="grid-card__title">{{ item.title }}</h3>
@@ -310,7 +311,7 @@
           <NuxtLink
             v-for="category in tourCategories"
             :key="category.title"
-            to="/tour-detail"
+            :to="{ path: '/tour-detail', query: { category: category.title } }"
             class="tour-category-card"
           >
             <div class="tour-category-card__bg" :style="{ backgroundImage: `url(${category.image})` }" />
@@ -329,36 +330,19 @@
           <h2 class="luxury-header__title">Our Latest Videos</h2>
         </div>
 
-        <div class="media-layout">
-          <!-- Mock Facebook page plugin -->
-          <div class="fb-card">
-            <div class="fb-card__cover" :style="{ backgroundImage: `url(/images/phathartlaung.jpeg)` }" />
-            <div class="fb-card__body">
-              <div class="fb-card__avatar">
-                <FacebookFilled />
-              </div>
-              <h3 class="fb-card__name">UniBooking Travel</h3>
-              <p class="fb-card__followers">128K ຄົນຕິດຕາມ</p>
-              <button type="button" class="fb-card__btn">
-                <LikeOutlined /> ຕິດຕາມເຮົາ
-              </button>
-            </div>
-          </div>
-
-          <!-- YouTube-style video thumbnail grid -->
-          <div class="video-grid">
-            <div
-              v-for="video in videos"
-              :key="video.title"
-              class="video-card"
-              @click="openVideo(video)"
-            >
-              <img :src="video.thumb" :alt="video.title">
-              <PlayCircleFilled class="video-card__play" />
-              <div class="video-card__meta">
-                <span class="video-card__title">{{ video.title }}</span>
-                <span class="video-card__duration">{{ video.duration }}</span>
-              </div>
+        <!-- YouTube-style video thumbnail grid -->
+        <div class="video-grid">
+          <div
+            v-for="(video, index) in videos"
+            :key="`${video.title}-${index}`"
+            class="video-card"
+            @click="openVideo(video)"
+          >
+            <img :src="video.thumb" :alt="video.title">
+            <PlayCircleFilled class="video-card__play" />
+            <div class="video-card__meta">
+              <span class="video-card__title">{{ video.title }}</span>
+              <span class="video-card__duration">{{ video.duration }}</span>
             </div>
           </div>
         </div>
@@ -386,7 +370,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, h } from 'vue'
+import { reactive, ref, computed, h, onMounted, onUnmounted } from 'vue'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { EffectCoverflow } from 'swiper/modules'
 import 'swiper/css'
@@ -403,9 +387,6 @@ import {
   ThunderboltOutlined,
   GlobalOutlined,
   CustomerServiceOutlined,
-  ClusterOutlined,
-  FacebookFilled,
-  LikeOutlined,
   PlayCircleFilled,
   ArrowRightOutlined,
   CloseOutlined,
@@ -458,28 +439,44 @@ function showNextHeroSlide() {
   heroSwiper.value?.slideNext()
 }
 
-const services = [
-  {
-    icon: BankOutlined,
-    title: 'ຈອງໂຮງແຮມ',
-    description: 'ທີ່ພັກຫຼາກຫຼາຍລະດັບ ພ້ອມໂປຣໂມຊັນພິເສດ'
-  },
-  {
-    icon: CarOutlined,
-    title: 'ບໍລິການລົດເຊົ່າ',
-    description: 'ລົດເຊົ່າຂັບເອງ ຫຼື ພ້ອມຄົນຂັບ ປອດໄພທຸກເສັ້ນທາງ'
-  },
-  {
-    icon: SendOutlined,
-    title: 'ຈອງປີ້ຍົນ',
-    description: 'ປີ້ຍົນລາຄາປະຢັດ ຄອບຄຸມທຸກສາຍການບິນ'
-  },
-  {
-    icon: CompassOutlined,
-    title: 'ແພັກເກດທົວ',
-    description: 'ທົວຄົບວົງຈອນ ຈັດກຽມທຸກຢ່າງໃຫ້ທ່ານ'
+// --- Autoplay ---------------------------------------------------------
+// Plain `let`, not `ref`: this only ever holds a setInterval id for
+// internal bookkeeping and is never read from the template, so making it
+// reactive would just be unnecessary Vue tracking overhead.
+const HERO_AUTOPLAY_INTERVAL_MS = 3000
+let heroAutoplayTimer = null
+
+// heroSlide.value + 1, wrapping back to 0 after the last slide -- Swiper
+// isn't configured with `loop`, so a plain slideNext() would stall at the
+// final slide forever once autoplay reaches it. goToHeroSlide() drives
+// Swiper directly, which still fires the existing @slide-change handler
+// and keeps heroSlide (and the SSR fallback strip that reads it) in sync,
+// exactly as the manual prev/next buttons already do.
+function advanceHeroSlideForAutoplay() {
+  const nextIndex = (heroSlide.value + 1) % heroSlides.length
+  goToHeroSlide(nextIndex)
+}
+
+function startHeroAutoplay() {
+  // Guards against stacking a second interval if this is ever called
+  // while one is already running (e.g. a quick mouseleave/mouseenter).
+  stopHeroAutoplay()
+  heroAutoplayTimer = setInterval(advanceHeroSlideForAutoplay, HERO_AUTOPLAY_INTERVAL_MS)
+}
+
+function stopHeroAutoplay() {
+  if (heroAutoplayTimer !== null) {
+    clearInterval(heroAutoplayTimer)
+    heroAutoplayTimer = null
   }
-]
+}
+
+onMounted(startHeroAutoplay)
+// Without this, navigating away from the page (Nuxt is an SPA-style
+// router) would leave this interval running forever in the background --
+// a classic memory leak, and one that keeps calling goToHeroSlide() on a
+// Swiper instance that no longer exists.
+onUnmounted(stopHeroAutoplay)
 
 // Accurate, real-world icons (Material Symbols glyphs, Apache-2.0) for the nodes
 // antd doesn't cover precisely — a real airplane (not SendOutlined's paper plane),
@@ -499,121 +496,113 @@ const HotelIcon = makeGlyphIcon('M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 
 const RestaurantIcon = makeGlyphIcon('M8.1 13.34l2.83-2.83L3.91 3.5c-1.56 1.56-1.56 4.09 0 5.66l4.19 4.18zm6.78-1.81c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13l1.47-1.47z')
 const CocktailIcon = makeGlyphIcon('M21 5V3H3v2l8 9v5H6v2h12v-2h-5v-5l8-9zM7.43 7 5.66 5h12.69l-1.78 2H7.43z')
 
-// Realistic circuit layout: 6 nodes placed every 60° around one ring, in the
-// order the traveler actually visits them. The gold line traces the outer
-// perimeter from Airport all the way to Entertainment, then curves straight
-// back across the circle to Hotel — the traveler sleeps where they're
-// staying, not back at the Airport.
-const CIRCLE_RADIUS = 42 // percent, distance from center to each node's midpoint
-
-function angleToPoint(angleDeg) {
-  const rad = (angleDeg * Math.PI) / 180
-  return {
-    x: 50 + CIRCLE_RADIUS * Math.cos(rad),
-    y: 50 + CIRCLE_RADIUS * Math.sin(rad)
+// Radial hub-and-spoke ecosystem menu (adapted from CodeFronts' "Mission
+// Hub" circular menu, MIT licensed: https://codefronts.com/navigation/
+// css-circular-menus/mission-hub/). Each module's position around the ring
+// is computed entirely in CSS from its index (--i) and the total count
+// (--n) — see .ecosystem-module in <style> — so there's no JS trig/percent
+// math here at all. stat/delta are placeholder headline figures for the
+// center display; swap them for real numbers when available.
+const ecosystemModules = [
+  {
+    id: 'airport',
+    icon: FlightIcon,
+    label: 'ສະໜາມບິນ',
+    stat: '24/7',
+    delta: 'ບໍລິການຕະຫຼອດ 24 ຊົ່ວໂມງ'
+  },
+  {
+    id: 'car-rental',
+    icon: CarOutlined,
+    label: 'ລົດຮັບສົ່ງ / ລົດເຊົ່າ',
+    stat: '50+',
+    delta: 'ຄັນລົດພ້ອມໃຫ້ບໍລິການ'
+  },
+  {
+    id: 'hotel',
+    icon: HotelIcon,
+    label: 'ໂຮງແຮມ - ຣີສອດ',
+    stat: '150+',
+    delta: 'ໂຮງແຮມ ແລະ ຣີສອດທີ່ຄັດສັນ'
+  },
+  {
+    id: 'restaurant',
+    icon: RestaurantIcon,
+    label: 'ຮ້ານອາຫານ',
+    stat: '200+',
+    delta: 'ຮ້ານອາຫານທົ່ວທຸກແຂວງ'
+  },
+  {
+    id: 'attraction',
+    icon: CameraOutlined,
+    label: 'ສະຖານທີ່ທ່ອງທ່ຽວ',
+    stat: '80+',
+    delta: 'ສະຖານທີ່ທ່ອງທ່ຽວຍອດນິຍົມ'
+  },
+  {
+    id: 'entertainment',
+    icon: CocktailIcon,
+    label: 'ສະຖານທີ່ບັນເທີງ',
+    stat: '30+',
+    delta: 'ຈຸດບັນເທີງຍາມຄ່ຳຄືນ'
   }
-}
-
-// Clock-face visiting order: Airport(12) -> Transfers(2) -> Hotel(4) ->
-// Restaurant(6) -> Attractions(8) -> Entertainment(10), 60° apart.
-const NODE_ANGLES = [-90, -30, 30, 90, 150, 210]
-const [AIRPORT, TRANSFERS, HOTEL, RESTAURANT, ATTRACTIONS, ENTERTAINMENT] = NODE_ANGLES.map(angleToPoint)
-
-// Inner "return to hotel" curve: a gentle bow offset perpendicular to the
-// straight Entertainment -> Hotel line, so it reads as a deliberate curved
-// shortcut rather than a straight line stabbing through the center glow.
-const returnVector = { x: HOTEL.x - ENTERTAINMENT.x, y: HOTEL.y - ENTERTAINMENT.y }
-const returnLength = Math.hypot(returnVector.x, returnVector.y)
-const returnUnit = { x: returnVector.x / returnLength, y: returnVector.y / returnLength }
-const returnPerp = { x: returnUnit.y, y: -returnUnit.x }
-const CURVE_BULGE = 14 // percent-units the inner curve bows away from the straight diameter
-const returnControl1 = {
-  x: ENTERTAINMENT.x + returnVector.x / 3 + returnPerp.x * CURVE_BULGE,
-  y: ENTERTAINMENT.y + returnVector.y / 3 + returnPerp.y * CURVE_BULGE
-}
-const returnControl2 = {
-  x: ENTERTAINMENT.x + (returnVector.x * 2) / 3 + returnPerp.x * CURVE_BULGE,
-  y: ENTERTAINMENT.y + (returnVector.y * 2) / 3 + returnPerp.y * CURVE_BULGE
-}
-
-// Segment 6's shape: Entertainment -> (bow) -> Hotel.
-const returnPathD = `M ${ENTERTAINMENT.x},${ENTERTAINMENT.y} `
-  + `C ${returnControl1.x},${returnControl1.y} ${returnControl2.x},${returnControl2.y} ${HOTEL.x},${HOTEL.y}`
-
-// The circuit is now 6 independent segments (5 straight chords + the curved
-// return above) instead of one continuous path, each with pathLength="1" in
-// the template — so every segment's stroke-dasharray/dashoffset animates over
-// the same normalized 0-1 range regardless of its real length. That's what
-// lets each one get a hardcoded, uniform 0.5s draw time (see .circuit-line--*
-// / drawLine--* in the CSS): Line 1 draws, Node 2 lights, Line 2 draws, and so
-// on in a fixed chain reaction, rather than timing proportional to distance.
-//
-// Node identity only — the actual light-up timing is baked directly into each
-// node's own nodeGlow--<id> keyframes in CSS (see below), hardcoded to fire
-// the instant its incoming segment finishes drawing. It has to live in CSS
-// rather than here: each node needs to stay lit from its own arrival moment
-// all the way to one shared reset point at the end of the loop, which a
-// single shared keyframes + per-node animation-delay can't express — delay
-// only shifts a whole timeline, it can't compress a per-node "time remaining
-// until the same global reset" into it.
-function orbitNode(icon, label, angleDeg, id) {
-  const point = angleToPoint(angleDeg)
-  return {
-    icon,
-    label,
-    left: `${point.x}%`,
-    top: `${point.y}%`,
-    id
-  }
-}
-
-const orbitNodes = [
-  orbitNode(FlightIcon, 'ສະໜາມບິນ', NODE_ANGLES[0], 'airport'),
-  orbitNode(CarOutlined, 'ລົດຮັບສົ່ງ / ລົດເຊົ່າ', NODE_ANGLES[1], 'transfers'),
-  orbitNode(HotelIcon, 'ໂຮງແຮມ / ທີ່ພັກ', NODE_ANGLES[2], 'hotel'),
-  orbitNode(RestaurantIcon, 'ຮ້ານອາຫານ', NODE_ANGLES[3], 'restaurant'),
-  orbitNode(CameraOutlined, 'ສະຖານທີ່ທ່ອງທ່ຽວ', NODE_ANGLES[4], 'attractions'),
-  orbitNode(CocktailIcon, 'ສະຖານທີ່ບັນເທີງ', NODE_ANGLES[5], 'entertainment')
 ]
+
+const selectedModuleId = ref(ecosystemModules[0].id)
+const activeModule = computed(
+  () => ecosystemModules.find((module) => module.id === selectedModuleId.value) ?? ecosystemModules[0]
+)
 
 const serviceGridItems = [
   {
     icon: BankOutlined,
     title: 'ຈອງໂຮງແຮມ & ຣີສອດ',
-    description: 'ຊອກຫາ ແລະ ຈອງທີ່ພັກທົ່ວປະເທດລາວ',
-    color: '#10b981'
+    description: 'ຊອກຫາ ແລະ ຈອງທີ່ພັກທົ່ວປະເທດລາວ'
   },
   {
     icon: SendOutlined,
     title: 'ຈອງປີ້ຍົນ',
-    description: 'ປີ້ຍົນພາຍໃນ ແລະ ຕ່າງປະເທດ',
-    color: '#0ea5e9'
+    description: 'ປີ້ຍົນພາຍໃນ ແລະ ຕ່າງປະເທດ'
   },
   {
     icon: CarOutlined,
     title: 'ລົດຮັບ-ສົ່ງ & ເຊົ່າລົດ',
-    description: 'ບໍລິການລົດຮັບສົ່ງສະໜາມບິນ ແລະ ລົດເຊົ່າ',
-    color: '#f59e0b'
+    description: 'ບໍລິການລົດຮັບສົ່ງສະໜາມບິນ ແລະ ລົດເຊົ່າ'
   },
   {
     icon: CameraOutlined,
     title: 'ສະຖານທີ່ທ່ອງທ່ຽວ',
-    description: 'ຈອງປີ້ເຂົ້າຊົມສະຖານທີ່ທ່ອງທ່ຽວຍອດຮິດ',
-    color: '#8b5cf6'
+    description: 'ຈອງປີ້ເຂົ້າຊົມສະຖານທີ່ທ່ອງທ່ຽວຍອດຮິດ'
   },
   {
     icon: SafetyCertificateOutlined,
     title: 'ປະກັນໄພການເດີນທາງ',
-    description: 'ເດີນທາງອຸ່ນໃຈດ້ວຍປະກັນໄພຄຸ້ມຄອງ',
-    color: '#f43f5e'
+    description: 'ເດີນທາງອຸ່ນໃຈດ້ວຍປະກັນໄພຄຸ້ມຄອງ'
   },
   {
     icon: CompassOutlined,
     title: 'ແພັກເກດທົວ',
-    description: 'ທົວຄົບວົງຈອນ ຈັດກຽມທຸກຢ່າງໃຫ້ທ່ານ',
-    color: '#ec4899'
+    description: 'ທົວຄົບວົງຈອນ ຈັດກຽມທຸກຢ່າງໃຫ້ທ່ານ'
   }
 ]
+
+// Brief shimmer skeleton on mount so the services grid doesn't pop in blank
+// while its (future API-backed) data resolves -- tints give each card the
+// same faint gold-on-dark variation the finished cards will have.
+const isServicesLoading = ref(true)
+const serviceSkeletonTints = [
+  'rgba(212, 175, 55, 0.16)',
+  'rgba(197, 160, 89, 0.12)',
+  'rgba(212, 175, 55, 0.20)',
+  'rgba(255, 255, 255, 0.08)',
+  'rgba(197, 160, 89, 0.16)',
+  'rgba(212, 175, 55, 0.12)'
+]
+onMounted(() => {
+  setTimeout(() => {
+    isServicesLoading.value = false
+  }, 900)
+})
 
 const valueProps = [
   {
@@ -643,12 +632,20 @@ const valueProps = [
   }
 ]
 
-// Categories without real photography fall back to a tinted gradient + ghost icon
-// (see .luxury-card--tinted) rather than borrowing an unrelated destination photo.
+// A category without an `image` falls back to a tinted gradient + ghost icon
+// instead (see .luxury-card--tinted in <style>, and the v-else branch below) --
+// kept for any future category added here without dedicated photography yet.
+//
+// train-ticket.jpg / car-rental.jpg don't exist in public/images/ yet -- these
+// two cards will 404 until real photos land at those exact paths. Deliberately
+// not substituted with one of the existing Laos landscape photos: those are
+// all destination/nature shots, and reusing one here (e.g. a waterfall behind
+// "Car Rentals") would be the "unrelated destination photo" this file's own
+// previous comment already called out as worth avoiding.
 const bestOfLaos = [
   { title: 'River Cruise', image: '/images/Muaengngoy.jpg' },
-  { title: 'Train Ticketing', icon: ClusterOutlined },
-  { title: 'Car Rentals', icon: CarOutlined }
+  { title: 'Train Ticketing', image: '/images/train-ticket.jpg' },
+  { title: 'Car Rentals', image: '/images/car-rental.jpg' }
 ]
 
 const topDestinations = [
@@ -668,6 +665,9 @@ const tourCategories = [
 // Real, verified 4K travel/nature footage (checked against YouTube's oembed
 // endpoint before adding — the previous IDs here were meme/placeholder videos).
 // start/end trim each embed down to a 15s highlight instead of playing in full.
+// TODO: the 4 entries marked youtubeId: '' need a real, verified YouTube ID
+// (and start/end trim seconds) before their cards will play anything in the
+// lightbox — see the video-modal src binding in the template.
 const videos = reactive([
   { thumb: '/images/Tardkaungse.png', title: 'ທ່ຽວນ້ຳຕົກຕາດກວາງຊີ', duration: '0:15', youtubeId: '1sjB1KgMM5U', start: 30, end: 45 },
   { thumb: '/images/khonephapheng.jpg', title: 'ພະລັງນ້ຳຕົກຄອນພະເພັງ', duration: '0:15', youtubeId: 'Zy-HzW1QF_4', start: 40, end: 55 },
@@ -675,7 +675,11 @@ const videos = reactive([
   // 7Xv-a9z0M_s (originally requested) 404s on YouTube's oembed endpoint —
   // substituted with Oxvp6i49GFo, verified live and titled "Plain Of Jars
   // (Laos) Vacation Travel Video Guide".
-  { thumb: '/images/thonghaiheen.jpg', title: 'ຄວາມລຶກລັບທົ່ງໄຫຫິນ', duration: '0:15', youtubeId: 'Oxvp6i49GFo', start: 15, end: 30 }
+  { thumb: '/images/thonghaiheen.jpg', title: 'ຄວາມລຶກລັບທົ່ງໄຫຫິນ', duration: '0:15', youtubeId: 'Oxvp6i49GFo', start: 15, end: 30 },
+  { thumb: '/images/muang-ngoi.jpg', title: 'ເມືອງງອຍ', duration: '0:15', youtubeId: '', start: 0, end: 15 },
+  { thumb: '/images/muang-feuang.jpg', title: 'ເມືອງເຟືອງ', duration: '0:15', youtubeId: '', start: 0, end: 15 },
+  { thumb: '/images/tad-fane.jpg', title: 'ຕາດຟານ', duration: '0:15', youtubeId: '', start: 0, end: 15 },
+  { thumb: '/images/phou-khao-khouay.jpg', title: 'ທຳມະຊາດພູເຂົາຄວຍ', duration: '0:15', youtubeId: '', start: 0, end: 15 }
 ])
 
 const isVideoModalOpen = ref(false)
@@ -984,22 +988,23 @@ function closeVideo() {
   color: #ffffff;
 }
 
+/* Border now comes from the wrapping MagicBorderGlow's animated ring
+   (see the template) rather than a static border here, so hover only
+   needs to swap the fill/text color. */
 .hero-navbar__btn {
   display: inline-flex;
   align-items: center;
   padding: 8px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 999px;
   color: #ffffff;
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
-  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
 .hero-navbar__btn:hover {
   background: #c5a059;
-  border-color: #c5a059;
   color: #0a0a0a;
 }
 
@@ -1045,97 +1050,6 @@ function closeVideo() {
 }
 
 /* Services grid */
-.services-section {
-  width: 100%;
-  background: transparent;
-  padding: 80px 0;
-}
-
-.services-header {
-  text-align: center;
-  max-width: 640px;
-  margin: 0 auto 48px;
-}
-
-/* "Blue Light" accent block — electric cyan on black. Kept local to this
-   section (see SearchForm.vue for the matching search-bar treatment)
-   rather than swapping the sitewide gold accent used elsewhere. */
-.services-header__badge {
-  color: #22d3ee;
-  background: rgba(34, 211, 238, 0.12);
-  border: none;
-  border-radius: 16px;
-  padding: 4px 12px;
-  margin-bottom: 16px;
-}
-
-.services-header__title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #22d3ee;
-  margin-bottom: 12px;
-}
-
-.services-header__subtitle {
-  font-size: 15px;
-  line-height: 1.8;
-  color: rgba(34, 211, 238, 0.65);
-}
-
-/* Dark blue block fill with a soft pale-white glowing edge */
-.service-card {
-  height: 100%;
-  background: #14294f;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  padding: 32px 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 22px rgba(255, 255, 255, 0.12);
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
-}
-
-.service-card:hover {
-  transform: translateY(-5px);
-  background: #1a3566;
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6), 0 0 32px rgba(255, 255, 255, 0.22);
-}
-
-/* Unselected (default) icon state — dimmer cyan */
-.service-card__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgba(34, 211, 238, 0.1);
-  color: rgba(34, 211, 238, 0.75);
-  font-size: 24px;
-  margin-bottom: 20px;
-  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
-}
-
-/* Active icon state — full-brightness cyan with glow, on card hover */
-.service-card:hover .service-card__icon {
-  background: rgba(34, 211, 238, 0.18);
-  color: #22d3ee;
-  box-shadow: 0 0 16px rgba(34, 211, 238, 0.35);
-}
-
-.service-card__title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #22d3ee;
-  margin-bottom: 8px;
-}
-
-.service-card__desc {
-  font-size: 14px;
-  line-height: 1.8;
-  color: rgba(34, 211, 238, 0.65);
-  margin-bottom: 0;
-}
-
 /* ============================================================
    Modular Travel Solutions: luxury connected node network.
    Pure CSS — no JS-driven activation state; the SVG lines and
@@ -1215,370 +1129,255 @@ function closeVideo() {
   margin-bottom: 0;
 }
 
-.orbit-diagram {
+/* Radial hub-and-spoke ecosystem menu, adapted from CodeFronts' "Mission
+   Hub" circular menu (MIT). Re-skinned to this file's existing cyberpunk/
+   glass theme (deep slate/navy + neon cyan) instead of the demo's own
+   palette; positions come from container-query units + CSS trig, not
+   JS-computed percentages, so the whole thing stays fluid at any size. */
+.ecosystem-container {
   position: relative;
   width: 100%;
-  max-width: 400px;
+  max-width: 460px;
   aspect-ratio: 1 / 1;
   margin: 0 auto;
+  --eco-cyan: #2dd4bf;
 }
 
-/* Soft glow centered behind the ring */
-.orbit-diagram__glow {
+/* Deep slate/navy glass backdrop panel the whole diagram floats on */
+.ecosystem-container::before {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(13, 20, 35, 0.6) 0%, rgba(8, 12, 22, 0.32) 60%, transparent 78%);
+  border: 1px solid rgba(45, 212, 191, 0.1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Soft static cyan glow centered behind the diagram — pure ambience, no motion */
+.ecosystem-glow {
   position: absolute;
   top: 50%;
   left: 50%;
   width: 85%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(197, 160, 89, 0.25) 0%, rgba(0, 0, 0, 0.1) 45%, transparent 75%);
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.18) 0%, rgba(0, 0, 0, 0.08) 45%, transparent 75%);
   filter: blur(40px);
   z-index: 0;
   pointer-events: none;
 }
 
-.orbit-diagram__ring {
-  position: absolute;
-  inset: 0;
+/* Groups the whole radial menu; container-type turns the cqi units below
+   into "percent of this element's own width" so labels/gaps/the core all
+   scale together instead of needing separate breakpoint overrides. */
+.ecosystem-fieldset {
+  position: relative;
   width: 100%;
   height: 100%;
-  z-index: 1;
+  border: none;
+  container-type: inline-size;
 }
 
-/* Faint permanent track (see template): the full 6-segment circuit shape,
-   always visible at low opacity, sitting behind the traveling comets below. */
-.circuit-track {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.1);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-
-/* True "data flow" comets, not solid drawn lines: 6 independent segments (see
-   the template — 5 straight chords + the curved return), each normalized to
-   pathLength="1" so the same stroke-dasharray reads as "a short 0.1-unit dash
-   then a 1-unit gap" regardless of the segment's real geometric length —
-   effectively a single short glowing packet with nothing else in the
-   repeating pattern. Each segment gets its own hardcoded travel window inside
-   a shared 6s loop (0.5s per segment: 0-0.5s, 0.5-1s, 1-1.5s, ... 2.5-3s) via
-   its own flowLine--N keyframes below, animating stroke-dashoffset from 1
-   (packet parked just before the segment, invisible) to -1 (packet has slid a
-   full unit past the segment's end, also invisible) — Line 1's packet departs
-   and arrives, Node 2 lights (see nodeGlow--* further down), Line 2's packet
-   departs, and so on in a fixed chain reaction. The comet itself is always
-   transient; the nodes are what stay lit afterward as the "connected" trail. */
-.circuit-line {
-  fill: none;
-  stroke: #c5a059;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-dasharray: 0.1 1;
-  filter: drop-shadow(0 0 3px rgba(197, 160, 89, 0.95)) drop-shadow(0 0 9px rgba(197, 160, 89, 0.6));
-  animation-duration: 6s;
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
-}
-
-.circuit-line--1 {
-  animation-name: flowLine--1;
-}
-
-.circuit-line--2 {
-  animation-name: flowLine--2;
-}
-
-.circuit-line--3 {
-  animation-name: flowLine--3;
-}
-
-.circuit-line--4 {
-  animation-name: flowLine--4;
-}
-
-.circuit-line--5 {
-  animation-name: flowLine--5;
-}
-
-.circuit-line--6 {
-  animation-name: flowLine--6;
-}
-
-/* Line 1: Airport -> Transfers, packet travels 0s -> 0.5s. Each keyframe's
-   outgoing segment is pinned to `linear` (constant speed while traveling —
-   an eased packet would blur exactly when it "arrives", which is what the
-   synchronized node glow depends on); once past -1 it stays fully off-path
-   (invisible) for the rest of the loop, so nothing lingers as a solid line. */
-@keyframes flowLine--1 {
-  0% {
-    stroke-dashoffset: 1;
-    animation-timing-function: linear;
-  }
-  8.333%,
-  100% {
-    stroke-dashoffset: -1;
-  }
-}
-
-/* Line 2: Transfers -> Hotel, packet travels 0.5s -> 1.0s (right after Line 1's packet arrives). */
-@keyframes flowLine--2 {
-  0%,
-  8.333% {
-    stroke-dashoffset: 1;
-    animation-timing-function: linear;
-  }
-  16.667%,
-  100% {
-    stroke-dashoffset: -1;
-  }
-}
-
-/* Line 3: Hotel -> Restaurant, packet travels 1.0s -> 1.5s. */
-@keyframes flowLine--3 {
-  0%,
-  16.667% {
-    stroke-dashoffset: 1;
-    animation-timing-function: linear;
-  }
-  25%,
-  100% {
-    stroke-dashoffset: -1;
-  }
-}
-
-/* Line 4: Restaurant -> Attractions, packet travels 1.5s -> 2.0s. */
-@keyframes flowLine--4 {
-  0%,
-  25% {
-    stroke-dashoffset: 1;
-    animation-timing-function: linear;
-  }
-  33.333%,
-  100% {
-    stroke-dashoffset: -1;
-  }
-}
-
-/* Line 5: Attractions -> Entertainment, packet travels 2.0s -> 2.5s. */
-@keyframes flowLine--5 {
-  0%,
-  33.333% {
-    stroke-dashoffset: 1;
-    animation-timing-function: linear;
-  }
-  41.667%,
-  100% {
-    stroke-dashoffset: -1;
-  }
-}
-
-/* Line 6: Entertainment -> Hotel (the return curve), packet travels 2.5s ->
-   3.0s — the chain reaction's final leg, arriving back at Hotel to close the
-   loop. Nodes then hold their lit state solo (see nodeGlow--* below, still
-   unchanged) until 83.333%, fading together with the rest of the loop. */
-@keyframes flowLine--6 {
-  0%,
-  41.667% {
-    stroke-dashoffset: 1;
-    animation-timing-function: linear;
-  }
-  50%,
-  100% {
-    stroke-dashoffset: -1;
-  }
-}
-
-/* Nodes: glassmorphism cards, gold icon on dark green text, spaced evenly every
-   60° around the ring (see orbitNode() in the script). Each one starts dim and
-   snaps to a bright "connected" glow the instant the incoming line above
-   finishes drawing to it, via its own nodeGlow--<id> keyframes — then stays
-   lit through the hold and fades back to dim together with the lines. */
-.orbit-node {
+/* Visually hidden but still announced — the fieldset's accessible name */
+.ecosystem-sr {
   position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ecosystem-space {
+  position: relative;
+  width: 100%;
+  height: 100cqi;
+  display: grid;
+  place-items: center;
+  --r: 36cqi;
+}
+
+/* Faint connecting spokes from the core out to each module, drawn at the
+   exact angle CSS derives from that module's index (--i) and the total
+   count (--n) — see .ecosystem-module below, which uses the same --a. */
+.ecosystem-spoke {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: var(--r);
+  height: 1px;
+  --a: calc((360deg / var(--n)) * var(--i) - 90deg);
+  rotate: var(--a);
+  transform-origin: 0% 50%;
+  background: linear-gradient(90deg, rgba(45, 212, 191, 0.55), rgba(45, 212, 191, 0));
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.ecosystem-spoke.is-active {
+  opacity: 0.95;
+}
+
+/* Each module sits at the same angle as its spoke; cos()/sin() place it on
+   the ring purely in CSS from --i/--n, so there's no per-node JS math. */
+.ecosystem-module {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   z-index: 2;
+  --a: calc((360deg / var(--n)) * var(--i) - 90deg);
+  translate: calc(cos(var(--a)) * var(--r) - 50%) calc(sin(var(--a)) * var(--r) - 50%);
+}
+
+/* Native radio input drives selection + keyboard/arrow-key navigation
+   between modules; visually hidden in favor of its styled label. */
+.ecosystem-module input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.ecosystem-module label {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  width: 128px;
-  padding: 16px 10px;
-  background: linear-gradient(135deg, rgba(20, 41, 79, 0.65), rgba(10, 20, 40, 0.55));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 20px;
+  width: 21cqi;
+  min-width: 80px;
+  max-width: 98px;
+  padding: 14px 8px;
+  background: linear-gradient(155deg, rgba(17, 26, 46, 0.75), rgba(8, 12, 22, 0.85));
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 18px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   text-align: center;
-  transform: translate(-50%, -50%);
-  transition: all 0.4s ease;
-  animation-duration: 6s;
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
 }
 
-/* Pause the connect/glow cycle on hover so the lift/glow below reads cleanly */
-.orbit-node:hover {
-  animation-play-state: paused;
-  transform: translate(-50%, -50%) translateY(-5px) scale(1.03);
-  border-color: rgba(197, 160, 89, 0.55) !important;
-  box-shadow: 0 20px 45px rgba(197, 160, 89, 0.2), 0 8px 28px rgba(56, 189, 248, 0.2) !important;
+.ecosystem-module label:hover {
+  transform: translateY(-6px);
+  border-color: rgba(45, 212, 191, 0.5);
 }
 
-.orbit-node--airport {
-  animation-name: nodeGlow--airport;
+.ecosystem-module input:checked + label {
+  background: linear-gradient(160deg, rgba(45, 212, 191, 0.2), rgba(8, 12, 22, 0.9));
+  border-color: var(--eco-cyan);
+  box-shadow:
+    0 0 0 1px rgba(45, 212, 191, 0.55),
+    0 12px 28px -8px rgba(20, 184, 166, 0.55),
+    0 0 24px rgba(20, 184, 166, 0.35);
 }
 
-.orbit-node--transfers {
-  animation-name: nodeGlow--transfers;
+.ecosystem-module input:focus-visible + label {
+  outline: 2px solid var(--eco-cyan);
+  outline-offset: 3px;
 }
 
-.orbit-node--hotel {
-  animation-name: nodeGlow--hotel;
+.ecosystem-icon {
+  font-size: 22px;
+  color: #e6fffb;
+  text-shadow: 0 0 10px rgba(45, 212, 191, 0.5);
 }
 
-.orbit-node--restaurant {
-  animation-name: nodeGlow--restaurant;
+.ecosystem-module input:checked + label .ecosystem-icon {
+  color: var(--eco-cyan);
 }
 
-.orbit-node--attractions {
-  animation-name: nodeGlow--attractions;
-}
-
-.orbit-node--entertainment {
-  animation-name: nodeGlow--entertainment;
-}
-
-/* Airport is lit from 0% — it's the start of the chain, already glowing as
-   Line 1 begins drawing away from it. */
-@keyframes nodeGlow--airport {
-  0%,
-  83.333% {
-    border: 1px solid #c5a059;
-    box-shadow: 0 0 0 6px rgba(197, 160, 89, 0.25), 0 20px 45px rgba(197, 160, 89, 0.45);
-    transform: translate(-50%, -50%) scale(1.06);
-  }
-  100% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Transfers lights up the instant Line 1 finishes (0.5s). */
-@keyframes nodeGlow--transfers {
-  0%,
-  8.033% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-  8.333%,
-  83.333% {
-    border: 1px solid #c5a059;
-    box-shadow: 0 0 0 6px rgba(197, 160, 89, 0.25), 0 20px 45px rgba(197, 160, 89, 0.45);
-    transform: translate(-50%, -50%) scale(1.06);
-  }
-  100% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Hotel lights up the instant Line 2 finishes (1.0s) — it's visited again at
-   the very end of the circuit (Line 6), but by then it's already lit and
-   simply stays that way, so no second pulse is needed here. */
-@keyframes nodeGlow--hotel {
-  0%,
-  16.367% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-  16.667%,
-  83.333% {
-    border: 1px solid #c5a059;
-    box-shadow: 0 0 0 6px rgba(197, 160, 89, 0.25), 0 20px 45px rgba(197, 160, 89, 0.45);
-    transform: translate(-50%, -50%) scale(1.06);
-  }
-  100% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Restaurant lights up the instant Line 3 finishes (1.5s). */
-@keyframes nodeGlow--restaurant {
-  0%,
-  24.7% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-  25%,
-  83.333% {
-    border: 1px solid #c5a059;
-    box-shadow: 0 0 0 6px rgba(197, 160, 89, 0.25), 0 20px 45px rgba(197, 160, 89, 0.45);
-    transform: translate(-50%, -50%) scale(1.06);
-  }
-  100% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Attractions lights up the instant Line 4 finishes (2.0s). */
-@keyframes nodeGlow--attractions {
-  0%,
-  33.033% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-  33.333%,
-  83.333% {
-    border: 1px solid #c5a059;
-    box-shadow: 0 0 0 6px rgba(197, 160, 89, 0.25), 0 20px 45px rgba(197, 160, 89, 0.45);
-    transform: translate(-50%, -50%) scale(1.06);
-  }
-  100% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Entertainment lights up the instant Line 5 finishes (2.5s). */
-@keyframes nodeGlow--entertainment {
-  0%,
-  41.367% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-  41.667%,
-  83.333% {
-    border: 1px solid #c5a059;
-    box-shadow: 0 0 0 6px rgba(197, 160, 89, 0.25), 0 20px 45px rgba(197, 160, 89, 0.45);
-    transform: translate(-50%, -50%) scale(1.06);
-  }
-  100% {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-.orbit-node__icon {
-  font-size: 24px;
-  color: #ffffff;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-}
-
-.orbit-node__label {
+.ecosystem-label {
   font-size: 12px;
   font-weight: 600;
-  color: #ffffff;
+  letter-spacing: 0.015em;
+  line-height: 1.4;
+  color: #cffafe;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* Core: a glass disc showing the selected module's headline stat. Content
+   is swapped by Vue (see activeModule in the script); the fade/scale swap
+   itself is a <Transition>, not manual JS animation. */
+.ecosystem-core {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34cqi;
+  height: 34cqi;
+  min-width: 122px;
+  min-height: 122px;
+  max-width: 150px;
+  max-height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.85), rgba(6, 10, 20, 0.92));
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(45, 212, 191, 0.25),
+    0 0 34px rgba(20, 184, 166, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.ecosystem-core__content {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  text-align: center;
+}
+
+.ecosystem-core__label {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(45, 212, 191, 0.85);
+}
+
+.ecosystem-core__stat {
+  font-size: clamp(22px, 7cqi, 34px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  text-shadow: 0 0 16px rgba(45, 212, 191, 0.4);
+}
+
+.ecosystem-core__delta {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #cffafe;
+  max-width: 20ch;
+}
+
+.ecosystem-core-fade-enter-active,
+.ecosystem-core-fade-leave-active {
+  transition: opacity 0.18s ease, transform 0.22s ease;
+}
+
+.ecosystem-core-fade-enter-from,
+.ecosystem-core-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ecosystem-module label,
+  .ecosystem-spoke,
+  .ecosystem-core-fade-enter-active,
+  .ecosystem-core-fade-leave-active {
+    transition-duration: 0.01s;
+  }
 }
 
 /* Services grid: premium fintech-style app grid */
@@ -1652,23 +1451,23 @@ function closeVideo() {
   color: rgba(255, 255, 255, 0.65);
 }
 
-/* Dark blue block fill with a soft pale-white glowing edge */
+/* Premium dark glass card: frosted surface with a gold accent on hover */
 .grid-card {
   height: 100%;
-  background: #14294f;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
   padding: 32px 24px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 22px rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   text-align: center;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+  transition: all 0.3s ease;
 }
 
 .grid-card:hover {
-  transform: translateY(-5px);
-  background: #1a3566;
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 0 32px rgba(255, 255, 255, 0.22);
+  transform: translateY(-6px);
+  border-color: #d4af37;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 24px rgba(212, 175, 55, 0.25);
 }
 
 .grid-card__icon {
@@ -1679,11 +1478,17 @@ function closeVideo() {
   height: 64px;
   border-radius: 16px;
   margin: 0 auto;
+  background: rgba(212, 175, 55, 0.12);
+  transition: background 0.3s ease;
+}
+
+.grid-card:hover .grid-card__icon {
+  background: rgba(212, 175, 55, 0.2);
 }
 
 .grid-card__icon-glyph {
   font-size: 28px;
-  color: #ffffff;
+  color: #d4af37;
 }
 
 .grid-card__title {
@@ -1697,8 +1502,83 @@ function closeVideo() {
 .grid-card__desc {
   font-size: 13px;
   line-height: 1.8;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.65);
   margin-bottom: 0;
+}
+
+/* Services grid shimmer skeleton -- shown briefly on mount in place of the
+   real grid-card content while data resolves. */
+.services-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.grid-card--skeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.services-sk {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--sk-tint, rgba(255, 255, 255, 0.08));
+}
+
+.services-sk::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.16) 50%, transparent 70%);
+  animation: services-sk-shimmer 1.9s ease-in-out infinite;
+}
+
+@keyframes services-sk-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.services-sk--icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  margin: 0 auto;
+}
+
+.services-sk--title {
+  width: 60%;
+  height: 17px;
+  border-radius: 6px;
+  margin-top: 20px;
+}
+
+.services-sk--desc {
+  width: 85%;
+  height: 12px;
+  border-radius: 6px;
+  margin-top: 12px;
+}
+
+.services-sk--desc-short {
+  width: 55%;
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .services-sk::after {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* Mobile: shrink hero card radius and sections to fit smaller viewports */
@@ -1717,10 +1597,6 @@ function closeVideo() {
     font-size: 2rem;
   }
 
-  .services-section {
-    padding: 64px 0;
-  }
-
   .modular-section {
     padding: 64px 0;
     text-align: center;
@@ -1736,21 +1612,42 @@ function closeVideo() {
     margin-right: auto;
   }
 
-  .orbit-diagram {
+  /* Most sizing below is already fluid (cqi units, derived from
+     .ecosystem-container's own width), so mobile only needs to shrink the
+     container and nudge the px floors that keep the core/labels legible
+     at very small sizes — not a full parallel set of fixed dimensions. */
+  .ecosystem-container {
     max-width: 300px;
   }
 
-  .orbit-node {
-    width: 84px;
-    padding: 10px 6px;
+  .ecosystem-space {
+    --r: 38cqi;
+  }
+
+  .ecosystem-core {
+    min-width: 104px;
+    min-height: 104px;
+  }
+
+  /* The descriptive sentence doesn't fit legibly inside a ~104px circle
+     alongside the label + big stat number — drop it on the smallest
+     screens rather than let it clip against the circular edge; the label
+     + stat alone still read as a clear headline. */
+  .ecosystem-core__delta {
+    display: none;
+  }
+
+  .ecosystem-module label {
+    min-width: 72px;
+    padding: 12px 6px;
     gap: 6px;
   }
 
-  .orbit-node__icon {
+  .ecosystem-icon {
     font-size: 18px;
   }
 
-  .orbit-node__label {
+  .ecosystem-label {
     font-size: 10px;
   }
 
@@ -2068,98 +1965,28 @@ function closeVideo() {
   padding: 80px 0;
 }
 
-.media-layout {
-  display: grid;
-  grid-template-columns: 25% 1fr;
-  gap: 24px;
-  align-items: stretch;
-}
-
-/* Mock Facebook page plugin card */
-/* Dark blue block fill with a soft pale-white glowing edge */
-.fb-card {
-  display: flex;
-  flex-direction: column;
-  border-radius: 20px;
-  overflow: hidden;
-  background: #14294f;
-  border: 1px solid rgba(197, 160, 89, 0.5);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 18px rgba(197, 160, 89, 0.25);
-}
-
-.fb-card__cover {
-  height: 120px;
-  background-size: cover;
-  background-position: center;
-}
-
-.fb-card__body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 20px 24px;
-  text-align: center;
-}
-
-.fb-card__avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  margin-top: -32px;
-  margin-bottom: 12px;
-  border: 3px solid rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-  background: #1a2331;
-  color: #ffffff;
-  font-size: 28px;
-}
-
-.fb-card__name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 4px;
-}
-
-.fb-card__followers {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 16px;
-}
-
-.fb-card__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: none;
-  border-radius: 999px;
-  padding: 10px 24px;
-  background: #c5a059;
-  color: #0a0a0a;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.3s ease, color 0.3s ease;
-}
-
-.fb-card__btn:hover {
-  background: #d8bc7b;
-  color: #0a0a0a;
-}
-
-/* YouTube-style thumbnail grid */
+/* YouTube-style thumbnail grid: 4 across on desktop */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .video-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .video-card {
   position: relative;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
   aspect-ratio: 16 / 9;
   cursor: pointer;
@@ -2325,14 +2152,6 @@ function closeVideo() {
   }
 
   .tour-categories-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .media-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .video-grid {
     grid-template-columns: 1fr;
   }
 
