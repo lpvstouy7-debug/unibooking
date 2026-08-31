@@ -24,3 +24,7 @@ export const API_GET_MY_BOOKINGS = '/bookings/me';
 // Payments (unibooking-backend/src/payments/payments.controller.ts)
 export const API_CREATE_CHECKOUT = '/payments/checkout';
 export const apiPaymentStatus = (bookingId) => `/payments/status/${bookingId}`;
+
+// Reviews (unibooking-backend/src/reviews/reviews.controller.ts)
+export const API_CREATE_REVIEW = '/reviews';
+export const apiServiceReviews = (serviceId) => `/services/${serviceId}/reviews`;

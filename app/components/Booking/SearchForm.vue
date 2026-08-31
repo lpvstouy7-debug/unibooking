@@ -59,8 +59,9 @@
 </template>
 
 <script setup>
-// Nuxt auto-imports: ref, useBookingStore
+// Nuxt auto-imports: ref, reactive, useRouter, useBookingStore
 const bookingStore = useBookingStore()
+const router = useRouter()
 
 const activeTab = ref('hotels')
 
@@ -76,6 +77,13 @@ const transportSearch = reactive({
   departureDate: null
 })
 
+// a-range-picker/a-date-picker values are Dayjs instances, which -- like
+// native Date -- expose toISOString(), matching the isoDate() helper already
+// used on the hotels/transport results pages.
+function isoDate(value) {
+  return value ? value.toISOString().slice(0, 10) : undefined
+}
+
 function handleHotelSearch() {
   const [startDate, endDate] = hotelSearch.dates
 
@@ -84,19 +92,27 @@ function handleHotelSearch() {
   bookingStore.bookingData.endDate = endDate ?? null
   bookingStore.bookingData.guests = hotelSearch.guests
 
-  console.log('Hotel search payload:', {
-    location: hotelSearch.location,
-    ...bookingStore.bookingData
+  router.push({
+    path: '/hotels',
+    query: {
+      location: hotelSearch.location || undefined,
+      checkInDate: isoDate(startDate),
+      checkOutDate: isoDate(endDate),
+      guests: hotelSearch.guests
+    }
   })
 }
 
 function handleTransportSearch() {
   bookingStore.bookingData.startDate = transportSearch.departureDate
 
-  console.log('Transport search payload:', {
-    from: transportSearch.from,
-    to: transportSearch.to,
-    departureDate: transportSearch.departureDate
+  router.push({
+    path: '/transport',
+    query: {
+      origin: transportSearch.from || undefined,
+      destination: transportSearch.to || undefined,
+      departureDate: isoDate(transportSearch.departureDate)
+    }
   })
 }
 </script>

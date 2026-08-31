@@ -45,6 +45,9 @@
                 <a-button type="link" @click="handleViewDetail(record)">
                   ເບິ່ງລາຍລະອຽດ
                 </a-button>
+                <a-button v-if="record.status === 'COMPLETED'" type="link" @click="handleWriteReview(record)">
+                  ຂຽນຣີວິວ
+                </a-button>
               </template>
             </template>
           </a-table>
@@ -84,6 +87,22 @@
       <div class="modal-actions">
         <a-button @click="isModalVisible = false">ປິດ</a-button>
       </div>
+    </a-modal>
+
+    <!-- Write Review Modal -->
+    <a-modal
+      v-model:open="isReviewModalVisible"
+      title="ຂຽນຣີວິວ"
+      :footer="null"
+    >
+      <p v-if="reviewingBooking" class="review-modal__service">
+        {{ firstItem(reviewingBooking)?.inventoryPricing?.service?.name }}
+      </p>
+      <ReviewsWriteReviewForm
+        v-if="reviewingServiceId"
+        :service-id="reviewingServiceId"
+        @submitted="isReviewModalVisible = false"
+      />
     </a-modal>
   </div>
 </template>
@@ -165,6 +184,19 @@ function handleViewDetail(record) {
   selectedBooking.value = record
   isModalVisible.value = true
 }
+
+// Write Review modal -- only offered for COMPLETED bookings (see the
+// action column above); POST /reviews still re-verifies this server-side
+// (a completed booking for this serviceId, not yet reviewed), this button
+// is just when it makes sense to offer the form at all.
+const isReviewModalVisible = ref(false)
+const reviewingBooking = ref(null)
+const reviewingServiceId = computed(() => firstItem(reviewingBooking.value)?.inventoryPricing?.service?.id)
+
+function handleWriteReview(record) {
+  reviewingBooking.value = record
+  isReviewModalVisible.value = true
+}
 </script>
 
 <style scoped>
@@ -205,5 +237,11 @@ function handleViewDetail(record) {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.review-modal__service {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 16px;
 }
 </style>

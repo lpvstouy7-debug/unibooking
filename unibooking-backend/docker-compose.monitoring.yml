@@ -1,0 +1,82 @@
+version: '3.8'
+
+networks:
+  monitoring_network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  portainer_data:
+  loki_data:
+
+services:
+  # 1. Portainer: UI ສໍາລັບຄວບຄຸມ Docker
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer_monitoring
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - monitoring_network
+
+  # 2. Prometheus: ຕົວເກັບກຳຂໍ້ມູນ Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus_monitoring
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - monitoring_network
+
+  # 3. Grafana: ໜ້າຈໍ Dashboard (ປ່ຽນ Port ເປັນ 3105 ແລ້ວ)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_monitoring
+    restart: unless-stopped
+    ports:
+      - "3105:3000" # 🌟 ເຂົ້າໃຊ້ງານຜ່ານ http://localhost:3105
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin_password_change_me
+    networks:
+      - monitoring_network
+
+  # 4. Loki: ຕົວເກັບກຳ Logs
+  loki:
+    image: grafana/loki:latest
+    container_name: loki_monitoring
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    networks:
+      - monitoring_network
+
+  # 5. Promtail: ຕົວດຶງ Logs ຈາກ Docker ສົ່ງໄປໃຫ້ Loki
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail_monitoring
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring_network

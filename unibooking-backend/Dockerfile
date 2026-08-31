@@ -31,7 +31,9 @@ RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma gene
 
 COPY tsconfig*.json nest-cli.json ./
 COPY src ./src
-RUN npm run build
+# 🌟 ອັບເດດ Nest CLI ໃຫ້ໃໝ່ເພື່ອໃຫ້ມັນຢຸດສົ່ງ Flag ຕົວເກົ່າທີ່ພັງນັ້ນອອກມາ
+RUN npm install -g @nestjs/cli && npm run build
+
 
 # Strips devDependencies (typescript, @nestjs/cli, jest, eslint, ...) out
 # of the node_modules that's about to be copied into stage 2, while

@@ -63,7 +63,11 @@
           </div>
 
           <div class="detail-meta">
-            <span class="detail-meta__item"><StarFilled /> 4.9 (312 ລີວິວ)</span>
+            <span class="detail-meta__item">
+              <StarFilled />
+              <template v-if="serviceId">{{ reviewsStore.averageRating?.toFixed(1) ?? '–' }} ({{ reviewsStore.reviewCount }} ຣີວິວ)</template>
+              <template v-else>4.9 (312 ຣີວິວ)</template>
+            </span>
             <span class="detail-meta__item"><ClockCircleOutlined /> 2 ວັນ 1 ຄືນ</span>
             <span class="detail-meta__item"><TeamOutlined /> ສູງສຸດ 12 ຄົນ</span>
           </div>
@@ -110,6 +114,21 @@
               </li>
             </ul>
           </div>
+
+          <!-- Reviews: this page is a single static demo (no real Tour
+               Service backs it, see the ?category= comment above), so
+               there's no serviceId to fetch reviews for by default. Once
+               this page is linked from real inventory with ?serviceId=<uuid>
+               (e.g. a future /tours listing page built on GET /tours/search),
+               this section activates against the real POST /reviews /
+               GET /services/:serviceId/reviews endpoints. -->
+          <template v-if="serviceId">
+            <h2 class="detail-section-title">ຣີວິວ</h2>
+            <ReviewsReviewList :service-id="serviceId" class="detail-reviews" />
+
+            <h2 class="detail-section-title">ຂຽນຣີວິວ</h2>
+            <ReviewsWriteReviewForm :service-id="serviceId" @submitted="reviewsStore.fetchReviews(serviceId)" />
+          </template>
         </div>
 
         <!-- Right column: sticky booking widget -->
@@ -153,6 +172,7 @@ import {
   CheckCircleFilled,
   CloseOutlined
 } from '@ant-design/icons-vue'
+import { useReviewsStore } from '~/stores/reviews'
 
 // useRoute() is a Nuxt 3 auto-import -- no explicit import needed, same as
 // definePageMeta() elsewhere in this app.
@@ -163,6 +183,13 @@ const route = useRoute()
 // generic copy for any other entry point into this page (e.g. the Best of
 // Laos cards, which don't set this param).
 const featuredCategory = computed(() => route.query.category || 'ທົວແນະນຳ')
+
+// Optional real Service id -- see the Reviews section comment below.
+// ReviewsReviewList (mounted only when this is set) owns fetching
+// reviewsStore's data -- .detail-meta's average/count above just reads the
+// same shared store reactively, no need to fetch it again here.
+const serviceId = computed(() => (typeof route.query.serviceId === 'string' ? route.query.serviceId : null))
+const reviewsStore = useReviewsStore()
 
 const isMapModalOpen = ref(false)
 
@@ -491,6 +518,10 @@ const marqueeRowB = [...marqueeB, ...marqueeB]
   color: #10b981;
   margin-top: 3px;
   flex-shrink: 0;
+}
+
+.detail-reviews {
+  margin-bottom: 40px;
 }
 
 /* ============================================================

@@ -138,6 +138,7 @@ import { useBookingStore } from '~/stores/booking'
 
 const bookingStore = useBookingStore()
 const router = useRouter()
+const route = useRoute()
 
 function isoDate(date) {
   return date.toISOString().slice(0, 10)
@@ -156,11 +157,14 @@ const amenityOptions = ['WiFi', 'Pool', 'Breakfast', 'Gym', 'Spa', 'Parking', 'A
 // Price lives on InventoryPricing (per-date), not on Service itself, so a
 // date range must always accompany a hotel search for prices to come back
 // at all -- see HotelSearchDto/HotelsService.search on the backend.
+// Seeded from the homepage SearchForm's ?location=&checkInDate=&checkOutDate=
+// query params when present, so a search on `/` actually filters results
+// here instead of just landing on the page with the default date range.
 const filters = reactive({
-  location: '',
+  location: route.query.location ?? '',
   priceRange: [0, 5000000],
-  checkInDate: isoDate(today),
-  checkOutDate: isoDate(tomorrow),
+  checkInDate: route.query.checkInDate ?? isoDate(today),
+  checkOutDate: route.query.checkOutDate ?? isoDate(tomorrow),
   starRating: 0,
   propertyType: undefined,
   amenities: [],

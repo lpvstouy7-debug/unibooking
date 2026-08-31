@@ -4,6 +4,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -21,6 +22,7 @@ import { HotelsModule } from './hotels/hotels.module';
 import { TransportModule } from './transport/transport.module';
 import { ToursModule } from './tours/tours.module';
 import { CarRentalsModule } from './car-rentals/car-rentals.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -29,6 +31,11 @@ import { CarRentalsModule } from './car-rentals/car-rentals.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
+    }),
+
+    // Exposes Prometheus-formatted metrics at GET /metrics.
+    PrometheusModule.register({
+      path: '/metrics',
     }),
 
     // Global PrismaClient -- see src/prisma/prisma.module.ts. Every other
@@ -86,6 +93,7 @@ import { CarRentalsModule } from './car-rentals/car-rentals.module';
     PaymentsModule,
     UploadsModule,
     AdminModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [

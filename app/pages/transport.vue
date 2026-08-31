@@ -78,6 +78,7 @@ import { useBookingStore } from '~/stores/booking'
 
 const bookingStore = useBookingStore()
 const router = useRouter()
+const route = useRoute()
 
 const modeOptions = ['FLIGHT', 'TRAIN', 'BUS']
 const seatClassOptions = ['ECONOMY', 'BUSINESS', 'FIRST']
@@ -89,11 +90,15 @@ function isoDate(date) {
 // Transport is a same-day service -- one departure date, one seat = one unit
 // (see GET /transport/search on unibooking-backend, which widens a single
 // departureDate into a one-day availability window).
+//
+// Seeded from the homepage SearchForm's ?origin=&destination=&departureDate=
+// query params when present, so a search on `/` actually filters results
+// here instead of just landing on the page with today's date.
 const filters = reactive({
   mode: undefined,
-  origin: '',
-  destination: '',
-  departureDate: isoDate(new Date()),
+  origin: route.query.origin ?? '',
+  destination: route.query.destination ?? '',
+  departureDate: route.query.departureDate ?? isoDate(new Date()),
   seatClass: undefined
 })
 
