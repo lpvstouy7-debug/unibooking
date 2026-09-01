@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BookingStatus, Prisma, Role } from '@prisma/client';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   createPrismaMock,

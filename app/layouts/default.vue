@@ -7,7 +7,9 @@
          on mobile, since it's still the only way to reach the hamburger drawer there. -->
     <a-layout-header class="site-header" :class="{ 'site-header--hero-mode': route.meta.hideSiteHeader }">
       <div class="container site-header__inner">
-        <NuxtLink to="/" class="logo">UniBooking</NuxtLink>
+        <NuxtLink to="/" class="logo">
+          <img src="/images/unibooking-logo.png" alt="UniBooking" class="logo__img">
+        </NuxtLink>
 
         <!-- Desktop nav: centered, hidden below 768px via CSS.
              ClientOnly avoids the AMenu/Overflow/ResizeObserver SSR hydration crash
@@ -146,7 +148,9 @@
     <a-layout-footer class="site-footer">
       <div class="footer__container footer__top">
         <div class="footer__col footer__col--about">
-          <NuxtLink to="/" class="footer__logo">UniBooking</NuxtLink>
+          <NuxtLink to="/" class="footer__logo">
+            <img src="/images/unibooking-logo.png" alt="UniBooking Logo" class="footer__logo-img">
+          </NuxtLink>
           <p class="footer__about-text">
             ແພລັດຟອມການຈອງທີ່ພັກ ແລະ ການເດີນທາງແບບຄົບວົງຈອນ ສຳລັບການທ່ອງທ່ຽວທົ່ວປະເທດລາວ
             ດ້ວຍມາດຕະຖານລະດັບພຣີເມ້ຍມ.
@@ -227,13 +231,7 @@
       </div>
 
       <div class="footer__container footer__bottom">
-        <div class="footer__payments">
-          <span class="footer__payment-badge">VISA</span>
-          <span class="footer__payment-badge">Mastercard</span>
-          <span class="footer__payment-badge">Alipay</span>
-          <span class="footer__payment-badge">WeChat Pay</span>
-          <span class="footer__payment-badge">UnionPay</span>
-        </div>
+        <PaymentMethods />
         <p class="footer__copyright">
           &copy; {{ new Date().getFullYear() }} UniBooking Travel. All rights reserved.
         </p>
@@ -422,11 +420,15 @@ function handleDrawerMenuClick({ key }) {
 
 .logo {
   flex: 0 0 auto;
-  font-size: 22px;
-  font-weight: 700;
-  color: #ffffff;
+  display: flex;
+  align-items: center;
   text-decoration: none;
-  letter-spacing: 0.5px;
+}
+
+.logo__img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 /* Nav sits in the remaining space and centers itself within it */
@@ -532,7 +534,8 @@ function handleDrawerMenuClick({ key }) {
 .site-footer {
   position: relative;
   flex-shrink: 0;
-  background: #14294f;
+  background: radial-gradient(circle at 50% -20%, #254aab 0%, #172b5c 60%, #0d1b3e 100%);
+  box-shadow: inset 0 20px 40px -20px rgba(0, 0, 0, 0.8);
   border-top: 1px solid rgba(197, 160, 89, 0.15);
   color: rgba(251, 249, 242, 0.7);
   padding: 64px 0 0;
@@ -571,6 +574,36 @@ function handleDrawerMenuClick({ key }) {
   }
 }
 
+/* Rhythmic shimmer: a diagonal white light sweep for a premium/luxury
+   feel. ::before is already the ambient gold glow above, so this uses
+   ::after instead -- same layering (z-index: 0, behind .footer__container
+   at z-index: 1), same non-interactive behavior. */
+.site-footer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0) 100%);
+  transform: skewX(-25deg);
+  pointer-events: none;
+  z-index: 0;
+  animation: luxuryShimmer 7s infinite ease-in-out;
+}
+
+@keyframes luxuryShimmer {
+  0% {
+    left: -150%;
+  }
+  30% {
+    left: 200%;
+  }
+  100% {
+    left: 200%;
+  }
+}
+
 .footer__container {
   position: relative;
   z-index: 1;
@@ -591,12 +624,14 @@ function handleDrawerMenuClick({ key }) {
 
 .footer__logo {
   display: inline-block;
-  font-size: 22px;
-  font-weight: 700;
-  color: #c5a059;
   text-decoration: none;
-  letter-spacing: 0.5px;
   margin-bottom: 16px;
+}
+
+.footer__logo-img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .footer__about-text {
@@ -822,39 +857,7 @@ function handleDrawerMenuClick({ key }) {
   padding: 24px 0;
 }
 
-.footer__payments {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.footer__payment-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 14px;
-  border-radius: 8px;
-  background: rgba(251, 249, 242, 0.06);
-  border: 1px solid rgba(251, 249, 242, 0.15);
-  backdrop-filter: blur(8px);
-  box-shadow:
-    3px 3px 8px rgba(0, 0, 0, 0.35),
-    -2px -2px 6px rgba(255, 255, 255, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  color: #fbf9f2;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.footer__payment-badge:hover {
-  transform: translateY(-3px);
-  border-color: rgba(212, 175, 55, 0.55);
-  box-shadow:
-    4px 8px 16px rgba(0, 0, 0, 0.4),
-    0 0 14px rgba(212, 175, 55, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
+/* Payment method icons now live in the standalone PaymentMethods component. */
 
 .footer__copyright {
   font-size: 12px;

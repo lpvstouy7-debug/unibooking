@@ -1,23 +1,28 @@
 <template>
   <div>
     <section class="hero-section">
-      <div class="hero-card" :style="{ '--hero-image': `url(${heroSlides[heroSlide].image})` }">
+      <div class="hero-card" @mouseenter="stopHeroAutoplay" @mouseleave="startHeroAutoplay">
+        <HeroSlider :slides="heroSlides" :active-index="heroSlide" class="hero-card__slider" />
+        <div class="hero-card__scrim" aria-hidden="true" />
+
         <header class="hero-navbar">
-          <NuxtLink to="/" class="hero-navbar__logo">Uni<span>Booking</span></NuxtLink>
+          <NuxtLink to="/" class="hero-navbar__logo">
+            <img src="/images/unibooking-logo.png" alt="UniBooking" class="hero-navbar__logo-img">
+          </NuxtLink>
 
           <ClientOnly>
             <nav class="hero-navbar__links">
-              <NuxtLink to="/">Home</NuxtLink>
-              <a href="#">About Us</a>
-              <a href="#">Premium</a>
-              <a href="#">Blogs</a>
+              <NuxtLink to="/" class="hero-navbar__btn">Home</NuxtLink>
+              <a href="#" class="hero-navbar__btn">About Us</a>
+              <a href="#" class="hero-navbar__btn">Premium</a>
+              <a href="#" class="hero-navbar__btn">Blogs</a>
             </nav>
           </ClientOnly>
 
           <div class="hero-navbar__actions">
             <ClientOnly>
               <a-dropdown placement="bottomRight">
-                <a class="hero-navbar__lang" @click.prevent>
+                <a class="hero-navbar__lang hero-navbar__btn" @click.prevent>
                   <component :is="GlobalOutlined" />
                   <span>{{ heroLang }}</span>
                 </a>
@@ -31,23 +36,19 @@
               </a-dropdown>
             </ClientOnly>
 
-            <!-- Magic Border Glow: an animated gold/cyan conic-gradient ring
-                 (see MagicBorderGlow.vue) replaces the buttons' old static
-                 white border, so the two pill CTAs stand out against the
-                 hero photo without needing a filled background. -->
-            <MagicBorderGlow palette="luxury" radius="999px" border-width="1.5px" surface="rgba(11, 25, 44, 0.35)">
-              <a href="#services" class="hero-navbar__btn">Explore</a>
-            </MagicBorderGlow>
+            <!-- Raised/neumorphic gold pill: a vertical gradient plus inset
+                 top highlight and bottom shadow for a beveled, tactile look,
+                 lifted off the hero photo by its own outer drop shadow --
+                 no separate glow-ring wrapper needed to read as a CTA. -->
+            <a href="#services" class="hero-navbar__btn">Explore</a>
 
             <ClientOnly>
-              <MagicBorderGlow palette="luxury" radius="999px" border-width="1.5px" surface="rgba(11, 25, 44, 0.35)">
-                <NuxtLink v-if="!authStore.isAuthenticated" to="/login" class="hero-navbar__btn">
-                  Login
-                </NuxtLink>
-                <NuxtLink v-else to="/profile" class="hero-navbar__btn">
-                  {{ authStore.fullName }}
-                </NuxtLink>
-              </MagicBorderGlow>
+              <NuxtLink v-if="!authStore.isAuthenticated" to="/login" class="hero-navbar__btn">
+                Login
+              </NuxtLink>
+              <NuxtLink v-else to="/profile" class="hero-navbar__btn">
+                {{ authStore.fullName }}
+              </NuxtLink>
             </ClientOnly>
           </div>
         </header>
@@ -57,61 +58,11 @@
           <h1 class="hero-copy__title">{{ heroSlides[heroSlide].title }}</h1>
           <p class="hero-copy__subtitle">{{ heroSlides[heroSlide].subtitle }} · Discover Laos through places worth remembering.</p>
           <a href="#services" class="hero-copy__button">ເລີ່ມຕົ້ນ</a>
-          <div class="hero-copy__controls">
-            <button type="button" aria-label="Previous destination" class="hero-copy__nav-btn" @click="showPreviousHeroSlide">&lt;</button>
-            <button type="button" aria-label="Next destination" class="hero-copy__nav-btn" @click="showNextHeroSlide">&gt;</button>
-          </div>
         </div>
 
-        <div
-          class="hero-carousel"
-          aria-label="Popular destinations"
-          @mouseenter="stopHeroAutoplay"
-          @mouseleave="startHeroAutoplay"
-        >
-          <div class="hero-carousel__inner">
-            <ClientOnly>
-              <Swiper
-                :modules="[EffectCoverflow]"
-                effect="coverflow"
-                :centered-slides="true"
-                slides-per-view="auto"
-                :space-between="14"
-                :coverflow-effect="heroCoverflowEffect"
-                :slide-to-clicked-slide="true"
-                :initial-slide="heroSlide"
-                class="hero-carousel__swiper"
-                @swiper="setHeroSwiper"
-                @slide-change="onHeroSlideChange"
-              >
-                <SwiperSlide
-                  v-for="slide in heroSlides"
-                  :key="slide.title"
-                  class="hero-carousel__slide"
-                  v-slot="{ isActive }"
-                >
-                  <div class="hero-carousel__slide-inner" :class="{ 'is-active': isActive }">
-                    <img :src="slide.image" :alt="slide.title">
-                  </div>
-                </SwiperSlide>
-              </Swiper>
-
-              <!-- Static fallback during SSR / before hydration so the swipeable
-                   library (browser-only) doesn't crash the server render. -->
-              <template #fallback>
-                <div class="hero-carousel__fallback">
-                  <div
-                    v-for="slide in heroSlides"
-                    :key="slide.title"
-                    class="hero-carousel__slide-inner"
-                    :class="{ 'is-active': heroSlide === slide.index }"
-                  >
-                    <img :src="slide.image" :alt="slide.title">
-                  </div>
-                </div>
-              </template>
-            </ClientOnly>
-          </div>
+        <div class="hero-nav-controls">
+          <button type="button" aria-label="Previous destination" class="hero-nav-btn" @click="showPreviousHeroSlide">&lt;</button>
+          <button type="button" aria-label="Next destination" class="hero-nav-btn" @click="showNextHeroSlide">&gt;</button>
         </div>
       </div>
     </section>
@@ -279,20 +230,7 @@
           <h2 class="luxury-header__title">TOP DESTINATIONS</h2>
         </div>
 
-        <div class="destinations-grid">
-          <div
-            v-for="(item, index) in topDestinations"
-            :key="item.title"
-            class="luxury-card"
-            :class="{ 'luxury-card--feature': index === 0 }"
-          >
-            <img :src="item.image" :alt="item.title">
-            <div class="luxury-card__overlay">
-              <span class="luxury-card__title">{{ item.title }}</span>
-              <span class="luxury-card__subtitle">{{ item.subtitle }}</span>
-            </div>
-          </div>
-        </div>
+        <TopDestinations />
       </div>
     </section>
 
@@ -371,10 +309,6 @@
 
 <script setup>
 import { reactive, ref, computed, h, onMounted, onUnmounted } from 'vue'
-import { Swiper, SwiperSlide } from 'swiper/vue'
-import { EffectCoverflow } from 'swiper/modules'
-import 'swiper/css'
-import 'swiper/css/effect-coverflow'
 import {
   BankOutlined,
   CarOutlined,
@@ -416,27 +350,15 @@ const heroSlides = [
   { index: 6, title: 'ເມືອງງອຍ', subtitle: 'Luang Prabang', image: '/images/Muaengngoy.jpg' }
 ]
 
-const heroSwiper = ref(null)
-const heroCoverflowEffect = { rotate: 0, stretch: 0, depth: 140, modifier: 1.2, slideShadows: false }
-
-function setHeroSwiper(swiper) {
-  heroSwiper.value = swiper
-}
-
-function onHeroSlideChange(swiper) {
-  heroSlide.value = swiper.activeIndex
-}
-
-function goToHeroSlide(index) {
-  heroSwiper.value?.slideTo(index)
-}
-
+// Hero navigation is plain state now -- there's no Swiper instance behind
+// it since the thumbnail strip (the only thing that ever needed Swiper
+// here) was removed; HeroSlider just reacts to heroSlide changing.
 function showPreviousHeroSlide() {
-  heroSwiper.value?.slidePrev()
+  heroSlide.value = (heroSlide.value - 1 + heroSlides.length) % heroSlides.length
 }
 
 function showNextHeroSlide() {
-  heroSwiper.value?.slideNext()
+  heroSlide.value = (heroSlide.value + 1) % heroSlides.length
 }
 
 // --- Autoplay ---------------------------------------------------------
@@ -446,22 +368,11 @@ function showNextHeroSlide() {
 const HERO_AUTOPLAY_INTERVAL_MS = 3000
 let heroAutoplayTimer = null
 
-// heroSlide.value + 1, wrapping back to 0 after the last slide -- Swiper
-// isn't configured with `loop`, so a plain slideNext() would stall at the
-// final slide forever once autoplay reaches it. goToHeroSlide() drives
-// Swiper directly, which still fires the existing @slide-change handler
-// and keeps heroSlide (and the SSR fallback strip that reads it) in sync,
-// exactly as the manual prev/next buttons already do.
-function advanceHeroSlideForAutoplay() {
-  const nextIndex = (heroSlide.value + 1) % heroSlides.length
-  goToHeroSlide(nextIndex)
-}
-
 function startHeroAutoplay() {
   // Guards against stacking a second interval if this is ever called
   // while one is already running (e.g. a quick mouseleave/mouseenter).
   stopHeroAutoplay()
-  heroAutoplayTimer = setInterval(advanceHeroSlideForAutoplay, HERO_AUTOPLAY_INTERVAL_MS)
+  heroAutoplayTimer = setInterval(showNextHeroSlide, HERO_AUTOPLAY_INTERVAL_MS)
 }
 
 function stopHeroAutoplay() {
@@ -474,8 +385,7 @@ function stopHeroAutoplay() {
 onMounted(startHeroAutoplay)
 // Without this, navigating away from the page (Nuxt is an SPA-style
 // router) would leave this interval running forever in the background --
-// a classic memory leak, and one that keeps calling goToHeroSlide() on a
-// Swiper instance that no longer exists.
+// a classic memory leak.
 onUnmounted(stopHeroAutoplay)
 
 // Accurate, real-world icons (Material Symbols glyphs, Apache-2.0) for the nodes
@@ -648,14 +558,6 @@ const bestOfLaos = [
   { title: 'Car Rentals', image: '/images/car-rental.jpg' }
 ]
 
-const topDestinations = [
-  { title: 'Vang Vieng', subtitle: 'ວັງວຽງ', image: '/images/hero-bg.jpg' },
-  { title: 'Luang Prabang', subtitle: 'ຫຼວງພະບາງ', image: '/images/Tardkaungse.png' },
-  { title: 'Vientiane', subtitle: 'ວຽງຈັນ', image: '/images/patuxay.jpeg' },
-  { title: 'Champasak', subtitle: 'ຈຳປາສັກ', image: '/images/Wat-Phu-Laos.jpg' },
-  { title: 'Pakse', subtitle: 'ປາກເຊ', image: '/images/khonephapheng.jpg' }
-]
-
 const tourCategories = [
   { title: 'ADVENTURES & SPORTS', image: '/images/khonephapheng.jpg' },
   { title: 'PILGRIMAGE TOURS', image: '/images/Wat-Phu-Laos.jpg' },
@@ -718,21 +620,36 @@ function closeVideo() {
 }
 
 .hero-card {
-  max-width: 1440px;
-  width: 95%;
+  width: 100%;
   height: 85vh;
   min-height: 640px;
-  border-radius: 36px;
-  margin: 40px auto;
+  margin: 0;
   position: relative;
   overflow: hidden;
-  /* Left-side scrim keeps the copy block legible; bottom-side scrim keeps
-     the carousel thumbnails legible — both over the same full-bleed photo. */
-  background:
-    linear-gradient(100deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 38%, rgba(0, 0, 0, 0.15) 62%, rgba(0, 0, 0, 0) 78%),
-    linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.42) 26%, rgba(0, 0, 0, 0) 52%),
-    var(--hero-image) center / cover no-repeat;
+  background: #0a0a0a; /* fallback while HeroSlider's images load */
   box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6);
+}
+
+/* Photo layer -- 3D slice/blinds transition between destinations, sitting
+   behind the scrim below and everything else in the card. */
+.hero-card__slider {
+  z-index: 0;
+}
+
+/* Left-side scrim keeps the copy block legible; bottom-side scrim keeps
+   the carousel thumbnails legible — both painted over HeroSlider's photo
+   as their own layer so the slice transition can animate independently. */
+.hero-card__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* Lighter and tighter than before -- text now carries its own text-shadow
+     (see .hero-copy__tag/__title/__subtitle) so the scrim only needs to
+     take the edge off contrast, not fully darken the photo to be legible. */
+  background:
+    linear-gradient(100deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.32) 22%, rgba(0, 0, 0, 0.08) 40%, rgba(0, 0, 0, 0) 55%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.22) 16%, rgba(0, 0, 0, 0) 32%);
 }
 
 /* Left copy block — strictly left-aligned, pinned to the upper area of the
@@ -753,6 +670,7 @@ function closeVideo() {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.2em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 2px 10px rgba(0, 0, 0, 0.7);
 }
 
 .hero-copy__title {
@@ -760,14 +678,16 @@ function closeVideo() {
   color: #fff;
   font-size: clamp(2.5rem, 5vw, 4.5rem);
   line-height: 1.05;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9), 0 4px 18px rgba(0, 0, 0, 0.7);
 }
 
 .hero-copy__subtitle {
   max-width: 390px;
   margin: 0;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 16px;
   line-height: 1.6;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 2px 10px rgba(0, 0, 0, 0.7);
 }
 
 .hero-copy__button {
@@ -792,123 +712,45 @@ function closeVideo() {
   transform: translateY(-2px);
 }
 
-.hero-copy__controls {
+/* Bottom-right of the hero card, clear of the copy block and navbar. */
+.hero-nav-controls {
+  position: absolute;
+  right: 32px;
+  bottom: 32px;
+  z-index: 6;
   display: flex;
-  gap: 10px;
-  margin-top: 24px;
+  gap: 8px;
 }
 
-.hero-copy__nav-btn {
-  width: 38px;
-  height: 38px;
+.hero-nav-btn {
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.65);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  font-size: 22px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
   transition: background 0.25s ease, border-color 0.25s ease;
 }
 
-.hero-copy__nav-btn:hover {
+.hero-nav-btn:hover {
   background: #c5a059;
   border-color: #c5a059;
 }
 
-/* Bottom carousel overlay — a swipeable (Swiper) coverflow strip, centered
-   in the same 1200px column as the search box below the hero card so the
-   two line up on desktop. */
-.hero-carousel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  padding: 0 0 28px;
-}
-
-.hero-carousel__inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
-.hero-carousel__swiper {
-  width: 100%;
-  padding: 10px 0 6px;
-  overflow: visible;
-}
-
-.hero-carousel__fallback {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 10px 0 6px;
-}
-
-.hero-carousel__fallback::-webkit-scrollbar {
-  display: none;
-}
-
-.hero-carousel__slide {
-  position: relative;
-  width: clamp(120px, 14vw, 168px);
-  height: clamp(150px, 20vh, 190px);
-}
-
-.hero-carousel__slide-inner {
-  position: relative;
-  width: clamp(120px, 14vw, 168px);
-  height: clamp(150px, 20vh, 190px);
-  flex: 0 0 auto;
-  border-radius: 18px;
-  overflow: hidden;
-  background: #111826;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.5);
-  cursor: pointer;
-  opacity: 0.72;
-  transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.hero-carousel__slide-inner:hover,
-.hero-carousel__slide-inner.is-active {
-  opacity: 1;
-  transform: translateY(-6px);
-}
-
-.hero-carousel__slide-inner img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.hero-carousel__slide-inner::after {
-  content: '';
-  position: absolute;
-  inset: 55% 0 0;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
-}
-
-.hero-carousel__slide-inner.is-active::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border: 2px solid #c5a059;
-  border-radius: 18px;
-}
-
-/* Original white search card, pulled up to overlap the hero's bottom edge. */
+/* Original white search card, pulled up to overlap the hero's bottom edge.
+   Kept shy of .hero-nav-controls (bottom:32px, 32px tall -- occupies the
+   32-64px band above the hero's bottom edge): -20px leaves a clear ~12px
+   gap instead of burying the arrows under the card. */
 .search-form-wrapper {
   position: relative;
   z-index: 50;
   width: 100%;
   max-width: 1200px;
-  margin: -60px auto 0;
+  margin: -20px auto 0;
 }
 
 .search-form-wrapper :deep(.search-form.ant-card) {
@@ -936,76 +778,78 @@ function closeVideo() {
 
 .hero-navbar__logo {
   flex: 0 0 auto;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  color: #ffffff;
+  display: flex;
+  align-items: center;
   text-decoration: none;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
 }
 
-.hero-navbar__logo span {
-  color: #c5a059;
+.hero-navbar__logo-img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .hero-navbar__links {
   display: flex;
   align-items: center;
-  gap: 36px;
-}
-
-.hero-navbar__links a {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  transition: color 0.25s ease;
-}
-
-.hero-navbar__links a:hover {
-  color: #c5a059;
+  gap: 12px;
 }
 
 .hero-navbar__actions {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
+/* Layout only -- .hero-navbar__btn (below) now supplies the pill's
+   background, padding, border-radius, and text color; this just keeps
+   the dropdown trigger's icon+label from touching. */
 .hero-navbar__lang {
-  display: inline-flex;
-  align-items: center;
   gap: 6px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   cursor: pointer;
 }
 
-.hero-navbar__lang:hover {
-  color: #ffffff;
-}
-
-/* Border now comes from the wrapping MagicBorderGlow's animated ring
-   (see the template) rather than a static border here, so hover only
-   needs to swap the fill/text color. */
+/* Raised gold pill -- vertical gradient + inset top highlight/bottom
+   shade for the bevel, outer drop shadow to lift it off the photo. No
+   border: the bevel itself reads as the edge. */
 .hero-navbar__btn {
   display: inline-flex;
   align-items: center;
-  padding: 8px 20px;
+  padding: 8px 22px;
+  border: none;
   border-radius: 999px;
-  color: #ffffff;
+  background: linear-gradient(to bottom, #e6c982 0%, #c5a059 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+  color: #3a2a0d;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
-  transition: background 0.25s ease, color 0.25s ease;
+  transition: background 0.2s ease, box-shadow 0.15s ease, transform 0.1s ease;
 }
 
 .hero-navbar__btn:hover {
-  background: #c5a059;
-  color: #0a0a0a;
+  background: linear-gradient(to bottom, #edd695 0%, #d4af37 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.15),
+    0 6px 14px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+  color: #3a2a0d;
+}
+
+/* Pressed: bevel inverts (dark on top, no bottom highlight) and the
+   button sinks -- the "tactile" cue that it actually registered a click. */
+.hero-navbar__btn:active {
+  background: linear-gradient(to bottom, #c5a059 0%, #b08d47 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+  transform: translateY(1px);
 }
 
 @media (max-width: 767px) {
@@ -1028,9 +872,20 @@ function closeVideo() {
   .hero-card {
     height: auto;
     min-height: 0;
-    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), var(--hero-image) center / cover no-repeat;
     padding-top: 100px;
     padding-bottom: 24px;
+  }
+
+  /* Extra flat darkening layered over the usual left/bottom gradients --
+     mobile stacks the copy block directly over the photo instead of
+     beside it, so it needs more uniform contrast than desktop does.
+     Lighter than before, same reasoning as the desktop scrim above:
+     text-shadow now does most of the legibility work. */
+  .hero-card__scrim {
+    background:
+      linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)),
+      linear-gradient(100deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.32) 22%, rgba(0, 0, 0, 0.08) 40%, rgba(0, 0, 0, 0) 55%),
+      linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.22) 16%, rgba(0, 0, 0, 0) 32%);
   }
 
   .hero-copy {
@@ -1043,9 +898,15 @@ function closeVideo() {
     margin-bottom: 32px;
   }
 
-  .hero-carousel {
-    position: relative;
-    padding: 0 0 24px;
+  .hero-nav-controls {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  /* Arrows here occupy the 16-48px band above the hero's bottom edge --
+     shrink the overlap further so the card doesn't creep back under them. */
+  .search-form-wrapper {
+    margin-top: -10px;
   }
 }
 
@@ -1587,12 +1448,6 @@ function closeVideo() {
     padding: 0 16px;
   }
 
-  .hero-card {
-    width: 92%;
-    border-radius: 24px;
-    margin: 24px auto;
-  }
-
   .hero-copy__title {
     font-size: 2rem;
   }
@@ -1821,27 +1676,12 @@ function closeVideo() {
   gap: 24px;
 }
 
-/* Top Destinations: editorial mosaic — first card doubled in both directions */
+/* Top Destinations section wrapper — the mosaic grid itself now lives in
+   the standalone TopDestinations component. */
 .destinations-section {
   width: 100%;
   background: transparent;
   padding: 80px 0;
-}
-
-.destinations-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 220px;
-  gap: 20px;
-}
-
-.luxury-card--feature {
-  grid-column: span 2;
-  grid-row: span 2;
-}
-
-.luxury-card--feature .luxury-card__title {
-  font-size: 26px;
 }
 
 /* Tour Categories: curated category grid with premium image cards */
@@ -2105,15 +1945,6 @@ function closeVideo() {
   .value-section__inner {
     grid-template-columns: repeat(3, 1fr);
   }
-
-  .destinations-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .luxury-card--feature {
-    grid-column: span 2;
-    grid-row: span 1;
-  }
 }
 
 @media (max-width: 767px) {
@@ -2135,16 +1966,6 @@ function closeVideo() {
 
   .best-of-grid {
     grid-template-columns: 1fr;
-  }
-
-  .destinations-grid {
-    grid-template-columns: 1fr;
-    grid-auto-rows: 220px;
-  }
-
-  .luxury-card--feature {
-    grid-column: span 1;
-    grid-row: span 1;
   }
 
   .tour-categories-header__title {
